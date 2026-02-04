@@ -1,10 +1,12 @@
-
 // pm-analyzer/lib/api.ts
 
 export type Project = {
   id: string;
   name: string;
   description?: string | null;
+  githubRepo?: string | null;
+  sentryOrg?: string | null;
+  sentryProject?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -14,17 +16,24 @@ export type Project = {
 
 export type Feedback = {
   id: string;
-  content: string;
-  source: string;
-  type?: 'bug' | 'feature';
-  customerTier?: string;
-  revenue?: number;
+  text: string;
+  source?: string | null;
+  type?: 'bug' | 'feature' | null;
+  customerTier?: string | null;
+  revenue?: number | null;
   status: 'pending_analysis' | 'analyzed' | 'building' | 'shipped' | 'failed';
-  prUrl?: string;
+  githubPrUrl?: string | null;
+  githubIssueUrl?: string | null;
+  sentryIssueId?: string | null;
+  sentryIssueUrl?: string | null;
+  errorFrequency?: number | null;
   spec?: any;
+  pageUrl?: string | null;
+  browserInfo?: string | null;
+  shippedAt?: string | null;
   projectId: string;
   createdAt: string;
-  metadata?: any;
+  updatedAt: string;
 };
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
@@ -81,15 +90,31 @@ export async function getJobStatus(jobId: string): Promise<Job> {
   return res.json();
 }
 
-export async function getProjectAnalysis(projectId: string) {
-  // Mocking this for now as the endpoint might not be fully defined in the prompt
-  // But strictly following prompt: "See analysis results (themes, clusters)"
-  // Attempt to fetch from an analysis endpoint if it existed, otherwise we might need to fetch themes/clusters directly.
-  // Prompt says: "4. API Client... functions to call... (doesn't explicitly list getAnalysis but implies it)"
-  // I will assume there's an endpoint or I might need to fetch feedback with analysis.
-  // For now I'll add a placeholder or try to fetch from a hypothetical endpoint.
-  // Actually, I'll stick to the requested functions list in the prompt to be safe, 
-  // but "See analysis results" implies we need data.
-  // I'll add a function to get themes/clusters if the backend supports it, otherwise I'll leave it for now.
-  return {};
+export async function submitFeedback(data: {
+  projectId: string;
+  type: string;
+  source: string;
+  text: string;
+  email?: string;
+  tier?: string;
+  pageUrl?: string;
+  browserInfo?: string;
+}) {
+  const res = await fetch('/api/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to submit feedback');
+  return res.json();
+}
+
+export async function syncSentry(projectId: string) {
+  const res = await fetch('/api/integrations/sentry/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId }),
+  });
+  if (!res.ok) throw new Error('Failed to sync Sentry');
+  return res.json();
 }

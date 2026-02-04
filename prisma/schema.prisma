@@ -64,37 +64,48 @@ model VerificationToken {
 }
 
 model Project {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  repoUrl     String?
-  userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  feedback    Feedback[]
-  themes      Theme[]
-  analyses    Analysis[]
-  feedbackJobs FeedbackJob[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id              String     @id @default(cuid())
+  name            String
+  description     String?
+  repoUrl         String?
+  githubRepo      String?    @map("github_repo")
+  sentryOrg       String?    @map("sentry_org")
+  sentryProject   String?    @map("sentry_project")
+  sentryToken     String?    @map("sentry_token")
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedback        Feedback[]
+  themes          Theme[]
+  analyses        Analysis[]
+  feedbackJobs    FeedbackJob[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   @@map("projects")
 }
 
 model Feedback {
-  id           String                       @id @default(cuid())
-  content      String                       @db.Text
-  source       String?
-  type         String?                      // bug, feature
-  customerTier String?
-  revenue      Float?
-  status       String                       @default("pending_analysis") // pending_analysis, analyzed, ready_to_build, building, shipped
-  prUrl        String?
-  spec         Json?
-  embedding    Unsupported("vector(1536)")?
-  projectId    String
-  project      Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdAt    DateTime                     @default(now())
-  updatedAt    DateTime                     @updatedAt @default(now())
+  id              String                       @id @default(cuid())
+  text            String                       @db.Text
+  source          String?
+  type            String?                      // bug, feature
+  customerTier    String?
+  revenue         Float?
+  status          String                       @default("pending_analysis") // pending_analysis, analyzed, ready_to_build, building, shipped
+  githubPrUrl     String?                      @map("github_pr_url")
+  githubIssueUrl  String?                      @map("github_issue_url")
+  sentryIssueId   String?                      @map("sentry_issue_id")
+  sentryIssueUrl  String?                      @map("sentry_issue_url")
+  errorFrequency  Int?                         @map("error_frequency")
+  spec            Json?
+  pageUrl         String?                      @map("page_url")
+  browserInfo     String?                      @map("browser_info")
+  shippedAt       DateTime?                    @map("shipped_at")
+  embedding       Unsupported("vector(1536)")?
+  projectId       String
+  project         Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt @default(now())
 
   @@map("feedback")
 }
