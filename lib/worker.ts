@@ -29,7 +29,7 @@ export const feedbackWorker = new Worker(
         // Create feedback record
         const feedback = await prisma.feedback.create({
           data: {
-            content: item.content,
+            text: item.content,
             source: item.source,
             projectId: item.projectId,
             status: 'pending_analysis',
@@ -104,7 +104,7 @@ export const analysisWorker = new Worker(
       if (!feedback) throw new Error(`Feedback ${feedbackId} not found`);
 
       // Generate Spec
-      const spec = await generateSpec(feedback.content);
+      const spec = await generateSpec(feedback.text);
 
       // Update Feedback
       await prisma.feedback.update({

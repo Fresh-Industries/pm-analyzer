@@ -15,13 +15,22 @@ interface FeedbackListProps {
 
 export function FeedbackList({ feedbacks }: FeedbackListProps) {
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "sentry" | "pr">("all");
   const router = useRouter();
   const [buildingId, setBuildingId] = useState<string | null>(null);
 
-  const filtered = feedbacks.filter((f) =>
-    f.text.toLowerCase().includes(search.toLowerCase()) ||
-    f.source?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = feedbacks.filter((f) => {
+    const matchesSearch =
+      f.text.toLowerCase().includes(search.toLowerCase()) ||
+      f.source?.toLowerCase().includes(search.toLowerCase());
+
+    const matchesFilter =
+      filter === "all" ||
+      (filter === "sentry" && !!f.sentryIssueUrl) ||
+      (filter === "pr" && !!f.githubPrUrl);
+
+    return matchesSearch && matchesFilter;
+  });
 
   const handleBuild = async (id: string) => {
     setBuildingId(id);
@@ -51,6 +60,8 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
             <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Building
           </Badge>
         );
+      case "ready_for_review":
+        return <Badge className="bg-orange-500 hover:bg-orange-600">Ready for Review</Badge>;
       case "shipped":
         return <Badge className="bg-green-500 hover:bg-green-600">Shipped</Badge>;
       case "failed":
@@ -70,6 +81,30 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Button
+          size="sm"
+          variant={filter === "all" ? "default" : "outline"}
+          onClick={() => setFilter("all")}
+        >
+          All
+        </Button>
+        <Button
+          size="sm"
+          variant={filter === "sentry" ? "default" : "outline"}
+          onClick={() => setFilter("sentry")}
+        >
+          Linked to Sentry
+        </Button>
+        <Button
+          size="sm"
+          variant={filter === "pr" ? "default" : "outline"}
+          onClick={() => setFilter("pr")}
+        >
+          Has PR
+        </Button>
       </div>
 
       <div className="space-y-4">

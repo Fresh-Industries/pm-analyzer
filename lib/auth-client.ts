@@ -5,3 +5,6 @@ export const authClient = createAuthClient({
 })
 
 export const { signIn, signUp, useSession } = authClient;
+
+// Alias for compatibility
+export const createClient = authClient;

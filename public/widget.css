@@ -1,7 +1,13 @@
+:root {
+  --pma-button-color: #2563eb;
+  --pma-button-position-bottom: 20px;
+  --pma-button-position-right: 20px;
+}
+
 #pm-analyzer-widget-trigger {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: var(--pma-button-position-bottom);
+  right: var(--pma-button-position-right);
   padding: 12px 24px;
   color: white;
   border: none;
@@ -11,6 +17,7 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 9999;
   transition: transform 0.2s;
+  background-color: var(--pma-button-color);
 }
 
 #pm-analyzer-widget-trigger:hover {
@@ -78,4 +85,5 @@
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+  background-color: var(--pma-button-color);
 }

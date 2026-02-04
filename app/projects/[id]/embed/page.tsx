@@ -1,23 +1,21 @@
-import { createClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 import { db } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-
-const auth = createClient();
 
 export default async function ProjectEmbedPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth.getSession();
-  if (!session) {
+  const session = await authClient.getSession();
+  if (!session?.data?.user) {
     redirect("/sign-in");
   }
 
   const { id } = await params;
   const project = await db.project.findUnique({
-    where: { id, userId: session.user.id },
+    where: { id, userId: session.data.user.id },
   });
 
   if (!project) {
@@ -27,11 +25,11 @@ export default async function ProjectEmbedPage({
   const origin = process.env.NEXT_PUBLIC_APP_URL || "https://pm-analyzer.dev";
 
   const embedCode = `<!-- PM Analyzer Feedback Widget -->
-<script src="${origin}/widget.js"></script>
-<button data-pma-widget="feedback" data-pma-project="${project.id}">Give Feedback</button>
+<script src="${origin}/widget.js" data-project-id="${project.id}" data-origin="${origin}" data-button-color="#2563eb"></script>
 
-<!-- Or for bug reports: -->
-<button data-pma-widget="bug" data-pma-project="${project.id}">Report a Bug</button>`;
+<!-- Optional custom buttons -->
+<button data-pma-widget="feedback">Give Feedback</button>
+<button data-pma-widget="bug">Report a Bug</button>`;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

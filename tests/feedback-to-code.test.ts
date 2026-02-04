@@ -63,7 +63,7 @@ vi.mock('../lib/spec-generator', () => ({
 
 vi.mock('../lib/coding-agent', () => ({
   runOpenHandsAgent: vi.fn().mockResolvedValue({
-    prUrl: 'https://github.com/test/pr/1',
+    githubPrUrl: 'https://github.com/test/pr/1',
     logs: 'logs'
   }),
 }));
@@ -86,7 +86,7 @@ describe('Feedback to Code Pipeline', () => {
 
     (prisma.feedback.create as any).mockResolvedValue({
       id: 'fb_1',
-      content: 'Fix the button',
+      text: 'Fix the button',
       status: 'pending_analysis'
     });
 
@@ -111,7 +111,7 @@ describe('Feedback to Code Pipeline', () => {
     // Mock DB finding feedback
     (prisma.feedback.findUnique as any).mockResolvedValue({
       id: 'fb_1',
-      content: 'Fix the button',
+      text: 'Fix the button',
       status: 'pending_analysis'
     });
 
@@ -137,10 +137,10 @@ describe('Feedback to Code Pipeline', () => {
     // Mock DB
     (prisma.feedback.findUnique as any).mockResolvedValue({
       id: 'fb_1',
-      content: 'Fix the button',
+      text: 'Fix the button',
       status: 'building',
       projectId: 'proj_1',
-      project: { repoUrl: 'https://github.com/org/repo' },
+      project: { githubRepo: 'org/repo' },
       spec: { title: 'Spec' }
     });
 
@@ -151,15 +151,15 @@ describe('Feedback to Code Pipeline', () => {
     const { runOpenHandsAgent } = await import('../lib/coding-agent');
     expect(runOpenHandsAgent).toHaveBeenCalledWith(
         { title: 'Spec' }, 
-        'https://github.com/org/repo'
+        'org/repo'
     );
 
     // Verify update to shipped
     expect(prisma.feedback.update).toHaveBeenCalledWith({
       where: { id: 'fb_1' },
       data: expect.objectContaining({
-        status: 'shipped',
-        prUrl: 'https://github.com/test/pr/1'
+        status: 'ready_for_review',
+        githubPrUrl: 'https://github.com/test/pr/1'
       })
     });
   });

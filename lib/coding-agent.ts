@@ -1,3 +1,5 @@
+import { createPR } from "./github";
+
 export interface AgentSpec {
   title: string;
   summary: string;
@@ -6,17 +8,17 @@ export interface AgentSpec {
 }
 
 export interface AgentResult {
-  prUrl: string;
+  githubPrUrl: string;
   logs: string;
 }
 
-export async function runOpenHandsAgent(spec: AgentSpec, repoUrl: string): Promise<AgentResult> {
+export async function runOpenHandsAgent(spec: AgentSpec, repo: string): Promise<AgentResult> {
   const openHandsUrl = process.env.OPENHANDS_API_URL;
   
   if (!openHandsUrl) {
     console.warn("OPENHANDS_API_URL not set, mocking agent run");
     return {
-      prUrl: "https://github.com/example/repo/pull/123",
+      githubPrUrl: "https://github.com/example/repo/pull/123",
       logs: "Mock execution logs...",
     };
   }
@@ -29,7 +31,7 @@ export async function runOpenHandsAgent(spec: AgentSpec, repoUrl: string): Promi
         'Authorization': `Bearer ${process.env.OPENHANDS_TOKEN}` // if needed
       },
       body: JSON.stringify({
-        repo: repoUrl,
+        repo,
         task: `Implement the following spec:\n\n${JSON.stringify(spec, null, 2)}`,
         // Other OpenHands params
       }),
@@ -40,8 +42,18 @@ export async function runOpenHandsAgent(spec: AgentSpec, repoUrl: string): Promi
     }
 
     const data = await response.json();
+    let githubPrUrl = data.pr_url;
+
+    if (!githubPrUrl && data.branch) {
+      githubPrUrl = await createPR(repo, spec.title, spec.summary || "Automated PR", data.branch);
+    }
+
+    if (!githubPrUrl) {
+      throw new Error("OpenHands did not return a PR URL or branch");
+    }
+
     return {
-      prUrl: data.pr_url,
+      githubPrUrl,
       logs: data.logs || "",
     };
   } catch (error) {

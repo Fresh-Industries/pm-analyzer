@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const feedback = await prisma.feedback.create({
       data: {
         projectId,
-        content,
+        text: content,
         source,
         type,
         customerTier,

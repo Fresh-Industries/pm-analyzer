@@ -20,8 +20,8 @@ export const codingWorker = new Worker(
       });
 
       if (!feedback) throw new Error(`Feedback ${feedbackId} not found`);
-      if (!feedback.project.repoUrl) {
-        throw new Error(`Project ${feedback.projectId} has no repoUrl`);
+      if (!feedback.project.githubRepo && !feedback.project.repoUrl) {
+        throw new Error(`Project ${feedback.projectId} has no GitHub repo configured`);
       }
       if (!feedback.spec) {
         throw new Error(`Feedback ${feedbackId} has no spec`);
@@ -34,18 +34,22 @@ export const codingWorker = new Worker(
       });
 
       // Run Agent
-      const result = await runOpenHandsAgent(feedback.spec as any, feedback.project.repoUrl);
+      const repo = feedback.project.githubRepo || feedback.project.repoUrl;
+      if (!repo) {
+        throw new Error("No GitHub repository configured for this project");
+      }
+      const result = await runOpenHandsAgent(feedback.spec as any, repo);
 
-      // Update status to shipped (or ready_for_review)
+      // Update status to ready for review (PR created)
       await prisma.feedback.update({
         where: { id: feedbackId },
         data: {
-          status: 'shipped',
-          prUrl: result.prUrl,
+          status: 'ready_for_review',
+          githubPrUrl: result.githubPrUrl,
         },
       });
 
-      console.log(`Coding agent completed for ${feedbackId}. PR: ${result.prUrl}`);
+      console.log(`Coding agent completed for ${feedbackId}. PR: ${result.githubPrUrl}`);
     } catch (error) {
       console.error(`Coding agent failed for ${feedbackId}:`, error);
       

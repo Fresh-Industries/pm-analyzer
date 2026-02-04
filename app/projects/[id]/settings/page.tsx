@@ -1,23 +1,21 @@
-import { createClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 import { db } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-
-const auth = createClient();
 
 export default async function ProjectSettingsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth.getSession();
-  if (!session) {
+  const session = await authClient.getSession();
+  if (!session?.data?.user) {
     redirect("/sign-in");
   }
 
   const { id } = await params;
   const project = await db.project.findUnique({
-    where: { id, userId: session.user.id },
+    where: { id, userId: session.data.user.id },
   });
 
   if (!project) {

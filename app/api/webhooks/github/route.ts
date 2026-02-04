@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
             project: {
               githubRepo: repoFullName,
             },
-            status: "building",
+            status: "ready_for_review",
             NOT: {
               githubPrUrl: null,
             },

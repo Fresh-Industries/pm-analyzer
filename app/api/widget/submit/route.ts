@@ -27,19 +27,27 @@ export async function POST(request: NextRequest) {
         type: body.type || "feature",
         source: body.source || "widget",
         text: body.text,
-        email: body.email || null,
-        tier: body.tier || null,
+        customerTier: body.tier || null,
         pageUrl: body.pageUrl || null,
         browserInfo: body.browserInfo || null,
         status: "pending_analysis",
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      feedbackId: feedback.id,
-      message: "Feedback submitted successfully",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        feedbackId: feedback.id,
+        message: "Feedback submitted successfully",
+      },
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      }
+    );
   } catch (error) {
     console.error("Widget submission error:", error);
     return NextResponse.json(
@@ -47,4 +55,15 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
 }
