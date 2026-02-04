@@ -1,34 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { codingQueue } from '@/lib/queue';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  try {
-    const feedback = await prisma.feedback.findUnique({
-      where: { id },
-    });
 
-    if (!feedback) {
-      return NextResponse.json({ error: 'Feedback not found' }, { status: 404 });
-    }
-
-    if (feedback.status !== 'analyzed' && feedback.status !== 'failed') {
-      return NextResponse.json({ error: 'Feedback not ready for build' }, { status: 400 });
-    }
-
-    // Update status to prevent double-click
-    await prisma.feedback.update({
-      where: { id },
-      data: { status: 'building' },
-    });
-
-    // Add to queue
-    await codingQueue.add('build', { feedbackId: id });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Build trigger failed:', error);
-    return NextResponse.json({ error: 'Failed to trigger build' }, { status: 500 });
-  }
+  return NextResponse.json({
+    message: "PM Analyzer workflow has been updated",
+    help: "Instead of auto-building, click 'Copy for Cursor' to get the spec text and implement it in your IDE",
+    newWorkflow: [
+      "1. Feedback is analyzed and a spec is generated",
+      "2. Click 'Copy for Cursor' on a feedback item",
+      "3. Paste the spec into Cursor/Claude Code",
+      "4. Engineer implements the feature/fix",
+      "5. Create a PR and merge it",
+      "6. PM Analyzer automatically marks it as 'shipped' via GitHub webhook"
+    ],
+    docUrl: "https://github.com/Fresh-Industries/pm-analyzer#workflow"
+  }, { status: 410 }); // 410 Gone - the old build endpoint is deprecated
 }

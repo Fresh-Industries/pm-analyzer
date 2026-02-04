@@ -21,7 +21,7 @@ export type Feedback = {
   type?: 'bug' | 'feature' | null;
   customerTier?: string | null;
   revenue?: number | null;
-  status: 'pending_analysis' | 'analyzed' | 'building' | 'ready_for_review' | 'shipped' | 'failed';
+  status: 'pending_analysis' | 'analyzed' | 'ready_for_implementation' | 'shipped' | 'failed';
   githubPrUrl?: string | null;
   githubIssueUrl?: string | null;
   sentryIssueId?: string | null;

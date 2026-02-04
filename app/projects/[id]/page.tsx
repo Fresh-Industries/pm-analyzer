@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BarChart2, Settings, Code, Upload } from "lucide-react";
+import { ArrowLeft, BarChart2, Settings, Code, Upload, Terminal, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeedbackUploader } from "@/components/FeedbackUploader";
 import { FeedbackList } from "@/components/FeedbackList";
-import { JobStatus } from "@/components/JobStatus";
 import { getProject } from "@/lib/api";
 
 // This is a server component
@@ -83,6 +82,26 @@ export default async function ProjectDetailPage({
         )}
       </div>
 
+      {/* Workflow Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-blue-900">Human-in-the-Loop Workflow</h3>
+            <p className="text-sm text-blue-700 mt-1">
+              PM Analyzer generates specs from customer feedback. Engineers review specs and implement features in their IDE (Cursor, VS Code, etc.). This keeps humans in control while accelerating PM → engineer handoff.
+            </p>
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" variant="outline" asChild>
+                <a href="https://github.com/Fresh-Industries/pm-analyzer#workflow" target="_blank" rel="noopener">
+                  <Terminal className="w-4 h-4 mr-1" /> Documentation
+                </a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-3">
         {/* Main Content - Feedback List */}
         <div className="md:col-span-2 space-y-6">
@@ -119,10 +138,15 @@ export default async function ProjectDetailPage({
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Processing Jobs</h2>
-            <div className="text-sm text-muted-foreground border rounded-lg p-4 bg-muted/20">
-              Recent uploads and processing status will appear here.
-            </div>
+            <h2 className="text-xl font-semibold">How It Works</h2>
+            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+              <li>Collect feedback via widget, form, or Sentry</li>
+              <li>AI analyzes and generates specs</li>
+              <li>Click "Copy for Cursor" to get implementation text</li>
+              <li>Implement in your IDE</li>
+              <li>Create PR and merge</li>
+              <li>PM Analyzer marks as shipped</li>
+            </ol>
           </div>
         </div>
       </div>

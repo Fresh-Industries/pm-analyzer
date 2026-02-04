@@ -91,7 +91,7 @@ model Feedback {
   type            String?                      // bug, feature
   customerTier    String?
   revenue         Float?
-  status          String                       @default("pending_analysis") // pending_analysis, analyzed, ready_to_build, building, shipped
+  status          String                       @default("pending_analysis") // pending_analysis, analyzed, ready_for_implementation, shipped
   githubPrUrl     String?                      @map("github_pr_url")
   githubIssueUrl  String?                      @map("github_issue_url")
   sentryIssueId   String?                      @map("sentry_issue_id")
