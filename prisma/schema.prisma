@@ -67,6 +67,7 @@ model Project {
   id          String     @id @default(cuid())
   name        String
   description String?
+  repoUrl     String?
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   feedback    Feedback[]
@@ -80,13 +81,20 @@ model Project {
 }
 
 model Feedback {
-  id        String                       @id @default(cuid())
-  content   String                       @db.Text
-  source    String?
-  embedding Unsupported("vector(1536)")?
-  projectId String
-  project   Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdAt DateTime                     @default(now())
+  id           String                       @id @default(cuid())
+  content      String                       @db.Text
+  source       String?
+  type         String?                      // bug, feature
+  customerTier String?
+  revenue      Float?
+  status       String                       @default("pending_analysis") // pending_analysis, analyzed, ready_to_build, building, shipped
+  prUrl        String?
+  spec         Json?
+  embedding    Unsupported("vector(1536)")?
+  projectId    String
+  project      Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt @default(now())
 
   @@map("feedback")
 }

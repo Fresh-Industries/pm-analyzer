@@ -42,6 +42,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <BarChart2 className="mr-2 h-4 w-4" /> View Analysis
             </Link>
           </Button>
+          <Button asChild>
+            <Link href={`/projects/${id}/feedback/new`}>
+              + Add Feedback
+            </Link>
+          </Button>
         </div>
       </div>
 

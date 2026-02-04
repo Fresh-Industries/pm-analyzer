@@ -16,6 +16,12 @@ export type Feedback = {
   id: string;
   content: string;
   source: string;
+  type?: 'bug' | 'feature';
+  customerTier?: string;
+  revenue?: number;
+  status: 'pending_analysis' | 'analyzed' | 'building' | 'shipped' | 'failed';
+  prUrl?: string;
+  spec?: any;
   projectId: string;
   createdAt: string;
   metadata?: any;

@@ -2,6 +2,7 @@ import { Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from './prisma';
 import { generateEmbeddings } from './embeddings';
+import { generateSpec } from './spec-generator';
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -31,6 +32,7 @@ export const feedbackWorker = new Worker(
             content: item.content,
             source: item.source,
             projectId: item.projectId,
+            status: 'pending_analysis',
           },
         });
 
@@ -42,6 +44,9 @@ export const feedbackWorker = new Worker(
           SET "embedding" = ${vectorString}::vector 
           WHERE "id" = ${feedback.id}
         `;
+        
+        // Trigger individual analysis
+        // await analysisQueue.add('analyze', { feedbackId: feedback.id });
       }
 
       // 3. Update Job Stats
@@ -82,5 +87,43 @@ export const feedbackWorker = new Worker(
     connection, 
     concurrency: 5,
     lockDuration: 300000 
+  }
+);
+
+export const analysisWorker = new Worker(
+  'feedback-analysis',
+  async (job: Job) => {
+    const { feedbackId } = job.data;
+    console.log(`Analyzing feedback ${feedbackId}`);
+
+    try {
+      const feedback = await prisma.feedback.findUnique({
+        where: { id: feedbackId },
+      });
+
+      if (!feedback) throw new Error(`Feedback ${feedbackId} not found`);
+
+      // Generate Spec
+      const spec = await generateSpec(feedback.content);
+
+      // Update Feedback
+      await prisma.feedback.update({
+        where: { id: feedbackId },
+        data: {
+          spec: spec as any,
+          type: spec.type === 'BUG' ? 'bug' : 'feature',
+          status: 'analyzed', // or 'ready_to_build' if we want to auto-approve
+        },
+      });
+
+      console.log(`Analysis complete for ${feedbackId}`);
+    } catch (error) {
+      console.error(`Analysis failed for ${feedbackId}:`, error);
+      throw error;
+    }
+  },
+  {
+    connection,
+    concurrency: 2,
   }
 );
