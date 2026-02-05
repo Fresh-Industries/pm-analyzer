@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PM Analyzer — Decision & Handoff Tool
 
-## Getting Started
+A "Cursor for PMs" SaaS that helps product managers turn messy customer feedback into clear decisions and hand off work to engineering.
 
-First, run the development server:
+## What It Does
+
+PM Analyzer V1 is a **decision and handoff tool**, not an execution tool:
+
+1. **Upload evidence** — Paste text, upload CSVs, or import docs
+2. **Get AI analysis** — Problems clustered with customer quotes
+3. **See ranked opportunities** — Evidence, reasoning, tradeoffs
+4. **Generate decision doc** — Scope, AC, risks, non-goals, confidence
+5. **Hand off** — Copy for Linear/Slack/Cursor
+6. **Track history** — Remember decisions and why
+
+## What It Doesn't Do
+
+- ❌ Auto-code or create PRs
+- ❌ Analytics dashboards
+- ❌ Full roadmaps
+- ❌ Competitor research
+- ❌ Sentry/Intercom sync
+
+## Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Start databases
+docker-compose up -d
+
+# Push schema
+npx prisma db push
+
+# Run dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env` and fill in:
 
-## Learn More
+```bash
+DATABASE_URL="postgresql://..."
+REDIS_URL="redis://..."
+BETTER_AUTH_SECRET="generate with: openssl rand -base64 32"
+OPENAI_API_KEY="sk-..."
+```
 
-To learn more about Next.js, take a look at the following resources:
+## V1 Scope
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+PM Analyzer V1 succeeds if a PM uses it for 1-2 weeks, uploads real evidence, makes at least one real decision, and hands off with more confidence than gut instinct alone.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech Stack
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16, React 19, Tailwind CSS, shadcn/ui
+- PostgreSQL with Prisma
+- Better Auth for authentication
+- OpenAI (GPT-4o) for analysis
