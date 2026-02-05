@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analysisQueue } from '@/lib/queue';
-import { DEFAULT_ANALYSIS_MODEL_ID, isAnalysisModelId } from '@/lib/ai-models';
+import {
+  DEFAULT_ANALYSIS_MODEL_ID,
+  isAnalysisModelId,
+  isGeminiEnabled,
+} from '@/lib/ai-models';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,9 +32,16 @@ export async function POST(req: NextRequest) {
     const fallbackModel = isAnalysisModelId(envDefaultModel)
       ? envDefaultModel
       : DEFAULT_ANALYSIS_MODEL_ID;
-    const selectedModel = isAnalysisModelId(analysisModel || model)
+    let selectedModel = isAnalysisModelId(analysisModel || model)
       ? (analysisModel || model)
       : fallbackModel;
+
+    if (
+      selectedModel.startsWith("google:") &&
+      (!process.env.GOOGLE_GENERATIVE_AI_API_KEY || !isGeminiEnabled())
+    ) {
+      selectedModel = fallbackModel;
+    }
 
     const feedback = await prisma.feedback.create({
       data: {

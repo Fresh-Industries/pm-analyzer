@@ -15,3 +15,15 @@ export function isAnalysisModelId(
   if (!id) return false;
   return ANALYSIS_MODELS.some((m) => m.id === id);
 }
+
+export function getAvailableModels(enableGemini: boolean) {
+  if (enableGemini) return ANALYSIS_MODELS;
+  return ANALYSIS_MODELS.filter((m) => !m.id.startsWith("google:"));
+}
+
+export function isGeminiEnabled() {
+  return (
+    process.env.ENABLE_GEMINI === "true" ||
+    process.env.NEXT_PUBLIC_ENABLE_GEMINI === "true"
+  );
+}

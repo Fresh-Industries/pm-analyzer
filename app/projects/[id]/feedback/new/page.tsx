@@ -8,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ANALYSIS_MODELS, DEFAULT_ANALYSIS_MODEL_ID } from "@/lib/ai-models";
+import { DEFAULT_ANALYSIS_MODEL_ID, getAvailableModels } from "@/lib/ai-models";
 
 export default function NewFeedbackPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const enableGemini =
+    process.env.NEXT_PUBLIC_ENABLE_GEMINI === "true";
+  const availableModels = getAvailableModels(enableGemini);
 
   const [formData, setFormData] = useState({
     type: "feature",
@@ -149,7 +153,7 @@ export default function NewFeedbackPage({ params }: { params: Promise<{ id: stri
                   onChange={handleChange}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  {ANALYSIS_MODELS.map((model) => (
+                  {availableModels.map((model) => (
                     <option key={model.id} value={model.id}>
                       {model.label}
                     </option>

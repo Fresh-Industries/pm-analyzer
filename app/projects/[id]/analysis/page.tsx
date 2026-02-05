@@ -36,6 +36,23 @@ interface Analysis {
   opportunities: Opportunity[];
 }
 
+const isAnalysis = (data: unknown): data is Analysis => {
+  if (!data || typeof data !== "object") return false;
+  const record = data as Record<string, unknown>;
+  const themes = record.themes as Record<string, unknown> | undefined;
+  return (
+    typeof record.projectId === "string" &&
+    typeof record.generatedAt === "string" &&
+    typeof record.feedbackCount === "number" &&
+    themes !== undefined &&
+    typeof themes.bugs === "number" &&
+    typeof themes.features === "number" &&
+    typeof themes.other === "number" &&
+    Array.isArray(record.opportunities) &&
+    Array.isArray(record.topKeywords)
+  );
+};
+
 export default function AnalysisPage({
   params,
 }: {
@@ -56,7 +73,7 @@ export default function AnalysisPage({
       const res = await fetch(`/api/projects/${projectId}/analyze`);
       if (res.ok) {
         const data = await res.json();
-        setAnalysis(data);
+        setAnalysis(isAnalysis(data) ? data : null);
       }
     } catch (error) {
       console.error("Failed to fetch analysis:", error);
@@ -73,7 +90,7 @@ export default function AnalysisPage({
       });
       if (res.ok) {
         const data = await res.json();
-        setAnalysis(data);
+        setAnalysis(isAnalysis(data) ? data : null);
       }
     } catch (error) {
       console.error("Analysis failed:", error);

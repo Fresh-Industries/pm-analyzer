@@ -2,7 +2,11 @@ import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { DEFAULT_ANALYSIS_MODEL_ID, isAnalysisModelId } from './ai-models';
+import {
+  DEFAULT_ANALYSIS_MODEL_ID,
+  isAnalysisModelId,
+  isGeminiEnabled,
+} from './ai-models';
 
 const specSchema = z.object({
   type: z.enum(['BUG', 'FEATURE']),
@@ -30,7 +34,13 @@ function resolveModel(modelId?: string | null) {
     : fallbackModel;
 
   const [provider, model] = selectedModelId.split(':', 2);
-  if (provider === 'google') return google(model);
+  if (
+    provider === 'google' &&
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
+    isGeminiEnabled()
+  ) {
+    return google(model);
+  }
   return openai(model);
 }
 
