@@ -1,12 +1,27 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Copy, Check, ExternalLink, FileText, Send, Terminal, CheckCircle } from "lucide-react";
+import { ArrowLeft, Copy, Check, ExternalLink, Send, Terminal, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+interface Decision {
+  id: string;
+  title: string;
+  summary: string;
+  scope: string;
+  nonGoals: string;
+  acceptanceCriteria: string;
+  risks: string;
+  confidenceScore: number;
+  confidence: "high" | "medium" | "low";
+  status: string;
+  linkedFeedbackIds: string[];
+  createdAt: string;
+}
 
 interface DecisionPageProps {
   params: Promise<{ id: string; decisionId: string }>;
@@ -16,70 +31,90 @@ export default function DecisionDetailPage({ params }: DecisionPageProps) {
   const resolvedParams = use(params);
   const projectId = resolvedParams.id;
   const decisionId = resolvedParams.decisionId;
+  const [decision, setDecision] = useState<Decision | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  // In real app, fetch from API
-  const decision = {
-    id: decisionId,
-    title: "Implement dark mode for dashboard",
-    summary: "Add dark mode toggle to user settings and apply dark theme across dashboard components. Based on customer feedback requesting reduced eye strain during late-night work sessions.",
-    scope: "- Dashboard main view\n- Navigation sidebar\n- User settings page\n- All dashboard components",
-    nonGoals: "- Mobile-specific dark mode (future iteration)\n- Email templates\n- Public marketing pages",
-    risks: "- Third-party iframe content may not support dark mode\n- Some legacy charts may need CSS overrides",
-    confidence: "high",
-    status: "draft",
-    linkedFeedbackIds: ["1", "2", "3"],
-    createdAt: new Date().toISOString(),
+  useEffect(() => {
+    fetchDecision();
+  }, [projectId, decisionId]);
+
+  const fetchDecision = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/decisions/${decisionId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError("Decision not found");
+          return;
+        }
+        throw new Error("Failed to fetch decision");
+      }
+      const data = await res.json();
+      setDecision(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const encodeUri = (str: string) => encodeURIComponent(str);
 
-  const cursorUrl = `https://cursor.sh/?command=ToggleTerminal`;
-  const linearUrl = `https://linear.app/new?title=${encodeUri(decision.title)}&description=${encodeUri(`${decision.summary}\n\nScope:\n${decision.scope}\n\nNon-Goals:\n${decision.nonGoals || "None"}\n\nRisks:\n${decision.risks || "None"}`)}`;
-  const slackUrl = `https://slack.com/app_redirect?channel=general&text=${encodeUri(`📋 *New Product Decision: ${decision.title}*\n\n*Summary:* ${decision.summary}\n*Confidence:* ${decision.confidence.toUpperCase()}\n\nCheck PM Analyzer for full details.`)}`;
+  const cursorUrl = decision ? `https://cursor.sh/?command=ToggleTerminal` : "#";
+  const linearUrl = decision ? `https://linear.app/new?title=${encodeUri(decision.title)}&description=${encodeUri(`${decision.summary}\n\nScope:\n${decision.scope}\n\nNon-Goals:\n${decision.nonGoals || "None"}\n\nRisks:\n${decision.risks || "None"}`)}` : "#";
+  const slackUrl = decision ? `https://slack.com/app_redirect?channel=general&text=${encodeUri(`📋 *New Product Decision: ${decision.title}*\n\n*Summary:* ${decision.summary}\n*Confidence:* ${decision.confidence.toUpperCase()}\n\nCheck PM Analyzer for full details.`)}` : "#";
 
   const formatForCursor = () => {
-    return `## Feature: ${decision.title}
-
-**Summary:** ${decision.summary}
-
-**Scope:**
-${decision.scope}
-
-**Non-Goals:**
-${decision.nonGoals || "None"}
-
-**Risks:**
-${decision.risks || "None"}
-
-**Confidence:** ${decision.confidence}
-
-Implement this feature following the scope above. Focus on the user experience and ensure accessibility in dark mode.`;
+    if (!decision) return "";
+    let text = `## Feature: ${decision.title}\n\n**Summary:** ${decision.summary}\n\n**Scope:**\n${decision.scope}`;
+    
+    if (decision.acceptanceCriteria) {
+      text += `\n\n**Acceptance Criteria:**\n${decision.acceptanceCriteria}`;
+    }
+    
+    text += `\n\n**Non-Goals:**\n${decision.nonGoals || "None"}\n\n**Risks:**\n${decision.risks || "None"}\n\n**Confidence:** ${decision.confidence}`;
+    
+    if (decision.linkedFeedbackIds && decision.linkedFeedbackIds.length > 0) {
+      text += `\n\n---\n*Based on ${decision.linkedFeedbackIds.length} customer feedback items*`;
+    }
+    
+    return text;
   };
 
   const formatForLinear = () => {
-    return `${decision.title}
-
-${decision.summary}
-
-Scope:
-${decision.scope}
-
-Non-Goals:
-${decision.nonGoals || "None"}`;
+    if (!decision) return "";
+    let text = `${decision.title}\n\n${decision.summary}\n\n**Scope:**\n${decision.scope}`;
+    
+    if (decision.acceptanceCriteria) {
+      text += `\n\n**Acceptance Criteria:**\n${decision.acceptanceCriteria}`;
+    }
+    
+    text += `\n\n**Non-Goals:**\n${decision.nonGoals || "None"}`;
+    
+    return text;
   };
 
   const formatForSlack = () => {
-    return `📋 *New Product Decision: ${decision.title}*
+    if (!decision) return "";
+    const scopeLines = decision.scope.split('\n').filter(Boolean);
+    return `📋 *New Product Decision: ${decision.title}*\n\n*Summary:* ${decision.summary}\n\n*Confidence:* ${decision.confidence.toUpperCase()}\n\n*Scope:*\n${scopeLines.map(l => `• ${l}`).join('\n')}${decision.acceptanceCriteria ? `\n\n*Acceptance Criteria:*\n${decision.acceptanceCriteria}` : ""}\n\nNext steps: Check PM Analyzer for full decision details.`;
+  };
 
-*Summary:* ${decision.summary}
-
-*Confidence:* ${decision.confidence.toUpperCase()}
-
-Scope:
-${decision.scope.split('\n').map(l => `• ${l}`).join('\n')}
-
-Next steps: Check PM Analyzer for full decision details.`;
+  const formatForJson = () => {
+    if (!decision) return "";
+    return JSON.stringify({
+      title: decision.title,
+      summary: decision.summary,
+      scope: decision.scope,
+      acceptanceCriteria: decision.acceptanceCriteria,
+      nonGoals: decision.nonGoals,
+      risks: decision.risks,
+      confidence: decision.confidence,
+      linkedFeedbackCount: decision.linkedFeedbackIds?.length || 0,
+    }, null, 2);
   };
 
   const handleCopy = async (type: string, text: string) => {
@@ -88,8 +123,30 @@ Next steps: Check PM Analyzer for full decision details.`;
     setTimeout(() => setCopied(null), 2000);
   };
 
-  if (!decision) {
-    notFound();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-gray-500">Loading decision...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !decision) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="pt-6 text-center">
+            <p className="text-red-600 mb-4">{error || "Decision not found"}</p>
+            <Button asChild>
+              <Link href={`/projects/${projectId}/decisions`}>Back to Decisions</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -104,9 +161,18 @@ Next steps: Check PM Analyzer for full decision details.`;
               </Link>
             </div>
             <h1 className="text-3xl font-semibold text-gray-900">{decision.title}</h1>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <Badge variant="outline">{decision.status}</Badge>
-              <Badge variant="secondary">{decision.confidence} confidence</Badge>
+              <Badge 
+                variant="secondary"
+                className={
+                  decision.confidence === "high" ? "bg-green-100 text-green-700" :
+                  decision.confidence === "medium" ? "bg-yellow-100 text-yellow-700" :
+                  "bg-red-100 text-red-700"
+                }
+              >
+                {decision.confidence.toUpperCase()} CONFIDENCE
+              </Badge>
               <span className="text-sm text-gray-500">
                 {new Date(decision.createdAt).toLocaleDateString()}
               </span>
@@ -132,7 +198,7 @@ Next steps: Check PM Analyzer for full decision details.`;
             </CardHeader>
             <CardContent>
               <div className="whitespace-pre-wrap text-sm text-gray-700">
-                {decision.scope}
+                {decision.scope || "Not specified"}
               </div>
             </CardContent>
           </Card>
@@ -149,6 +215,20 @@ Next steps: Check PM Analyzer for full decision details.`;
           </Card>
         </div>
 
+        {/* Acceptance Criteria */}
+        {decision.acceptanceCriteria && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Acceptance Criteria</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="whitespace-pre-wrap text-sm text-gray-700">
+                {decision.acceptanceCriteria}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Risks */}
         <Card>
           <CardHeader>
@@ -161,7 +241,7 @@ Next steps: Check PM Analyzer for full decision details.`;
           </CardContent>
         </Card>
 
-        {/* Handoff Actions - REAL BUTTONS */}
+        {/* Handoff Actions */}
         <Card className="bg-green-50 border-green-200">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -225,7 +305,7 @@ Next steps: Check PM Analyzer for full decision details.`;
 
             <div className="border-t pt-4 mt-4">
               <p className="text-sm text-gray-500 mb-3">Or copy to clipboard:</p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -259,13 +339,24 @@ Next steps: Check PM Analyzer for full decision details.`;
                     <><Copy className="w-4 h-4 mr-1" /> Copy for Slack</>
                   )}
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleCopy("json", formatForJson())}
+                >
+                  {copied === "json" ? (
+                    <><Check className="w-4 h-4 mr-1" /> Copied!</>
+                  ) : (
+                    <><Copy className="w-4 h-4 mr-1" /> Copy JSON</>
+                  )}
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Linked Feedback */}
-        {decision.linkedFeedbackIds.length > 0 && (
+        {decision.linkedFeedbackIds && decision.linkedFeedbackIds.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Linked Evidence</CardTitle>
