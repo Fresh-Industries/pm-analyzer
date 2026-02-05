@@ -3,28 +3,22 @@
 import { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-interface FeedbackItem {
-  id: string;
-  text: string;
-  type: string | null;
-  status: string;
-  createdAt: string;
-}
-
 interface Opportunity {
   id: string;
   title: string;
-  theme: string;
+  category: "bug" | "feature";
   description: string;
   impact: "high" | "medium" | "low";
   impactScore: number;
   feedbackCount: number;
+  enterpriseCount: number;
+  examples: string[];
   feedbackIds: string[];
 }
 
@@ -51,7 +45,6 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
     confidence: "medium",
   });
 
-  // Fetch opportunity data if coming from analysis
   useEffect(() => {
     if (resolvedSearchParams.opportunityId) {
       fetchOpportunity();
@@ -67,13 +60,14 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
         const opp = analysis.opportunities?.find((o: Opportunity) => o.id === resolvedSearchParams.opportunityId);
         if (opp) {
           setOpportunity(opp);
-          // Auto-fill form
+          const isBug = opp.category === "bug";
+          
           setFormData({
-            title: opp.title,
+            title: opp.title.replace(/^(Fix:|Add:)\s*/, ""),
             summary: opp.description,
-            scope: `Build/improve: ${opp.title}\n\nBased on ${opp.feedbackCount} customer feedback items.`,
-            nonGoals: `- Mobile-specific changes (future iteration)\n- Related features not mentioned in feedback\n- Performance optimizations beyond scope`,
-            risks: `- Customer requirements may evolve\n- Dependencies on other teams\n- Technical complexity unknown`,
+            scope: `${isBug ? "Fix" : "Build"}: ${opp.title.replace(/^(Fix:|Add:)\s*/, "")}\n\nBased on ${opp.feedbackCount} customer reports${opp.enterpriseCount > 0 ? ` (${opp.enterpriseCount} from enterprise customers)` : ""}.`,
+            nonGoals: `- Mobile-specific ${isBug ? "fixes" : "features"}\n- Related ${isBug ? "bugs" : "features"} not directly related\n- Major ${isBug ? "refactor" : "redesign"} work`,
+            risks: `- Customer requirements may change\n- Edge cases may require more work\n- Testing coverage needs attention`,
             confidence: opp.impact === "high" ? "high" : opp.impact === "low" ? "low" : "medium",
           });
         }
@@ -120,13 +114,12 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-10 px-4 max-w-3xl">
-        {/* Header */}
         <div className="mb-8">
           <Link
-            href={`/projects/${projectId}/decisions`}
+            href={opportunity ? `/projects/${projectId}/analysis` : `/projects/${projectId}/decisions`}
             className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1 mb-4"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to Decisions
+            <ArrowLeft className="w-4 h-4" /> Back
           </Link>
           <h1 className="text-3xl font-semibold text-gray-900">Create Decision</h1>
           <p className="text-gray-500 mt-1">
@@ -136,19 +129,35 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
           </p>
         </div>
 
-        {/* Auto-filled indicator */}
         {opportunity && (
           <Card className="mb-6 bg-blue-50 border-blue-200">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-700">
-                <Loader2 className={`w-4 h-4 ${analyzing ? "animate-spin" : ""}`} />
-                <span className="font-medium">
-                  {analyzing ? "Auto-generating from analysis..." : "Auto-filled from analysis"}
-                </span>
+              <div className="flex items-start gap-3">
+                <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-blue-900">{opportunity.title}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      opportunity.impact === "high" ? "bg-red-100 text-red-700" :
+                      opportunity.impact === "medium" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-green-100 text-green-700"
+                    }`}>
+                      {opportunity.impact.toUpperCase()} PRIORITY
+                    </span>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    {opportunity.feedbackCount} customer mentions • {opportunity.enterpriseCount} enterprise
+                  </p>
+                  {opportunity.examples.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs text-blue-600 font-medium">Examples:</p>
+                      {opportunity.examples.slice(0, 2).map((ex, i) => (
+                        <p key={i} className="text-xs text-blue-600 italic">"{ex.slice(0, 150)}{ex.length > 150 ? "..." : ""}"</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-sm text-blue-600 mt-1">
-                Based on: {opportunity.title} ({opportunity.feedbackCount} items, {opportunity.impact} impact)
-              </p>
             </CardContent>
           </Card>
         )}
@@ -173,7 +182,7 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
                 <Input
                   id="title"
                   name="title"
-                  placeholder="e.g., Implement dark mode for dashboard"
+                  placeholder="e.g., Implement dark mode"
                   value={formData.title}
                   onChange={handleChange}
                   required
@@ -194,21 +203,19 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="confidence">Confidence</Label>
-                  <select
-                    id="confidence"
-                    name="confidence"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    value={formData.confidence}
-                    onChange={handleChange}
-                  >
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="confidence">Confidence</Label>
+                <select
+                  id="confidence"
+                  name="confidence"
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  value={formData.confidence}
+                  onChange={handleChange}
+                >
+                  <option value="high">High - We're confident about this</option>
+                  <option value="medium">Medium - Some uncertainty</option>
+                  <option value="low">Low - Need more research</option>
+                </select>
               </div>
             </CardContent>
           </Card>
@@ -240,7 +247,7 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
                   id="nonGoals"
                   name="nonGoals"
                   rows={3}
-                  placeholder="What won't be built? What are you explicitly NOT doing?"
+                  placeholder="What won't be built?"
                   className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
                   value={formData.nonGoals}
                   onChange={handleChange}
@@ -263,7 +270,7 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
                   id="risks"
                   name="risks"
                   rows={3}
-                  placeholder="What risks exist? How will you mitigate them?"
+                  placeholder="What risks exist?"
                   className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
                   value={formData.risks}
                   onChange={handleChange}
@@ -271,21 +278,6 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
               </div>
             </CardContent>
           </Card>
-
-          {/* Evidence Source */}
-          {opportunity && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Based on Evidence</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  This decision is based on {opportunity.feedbackCount} customer feedback items
-                  about "{opportunity.title}" with {opportunity.impact} impact score.
-                </p>
-              </CardContent>
-            </Card>
-          )}
 
           <div className="flex justify-end gap-3">
             <Button
@@ -300,7 +292,7 @@ export default function NewDecisionPage({ params, searchParams }: NewDecisionPag
                 <>Creating...</>
               ) : (
                 <>
-                  <Save className="w-4 h-4 mr-2" /> Create & Send
+                  <Save className="w-4 h-4 mr-2" /> Create Decision
                 </>
               )}
             </Button>

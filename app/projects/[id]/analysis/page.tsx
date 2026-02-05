@@ -2,19 +2,25 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, TrendingUp, AlertTriangle, Zap, Target, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, TrendingUp, AlertTriangle, Zap, Loader2, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+interface Example {
+  text: string;
+}
+
 interface Opportunity {
   id: string;
   title: string;
-  theme: string;
+  category: "bug" | "feature";
   description: string;
   impact: "high" | "medium" | "low";
   impactScore: number;
   feedbackCount: number;
+  enterpriseCount: number;
+  examples: string[];
   feedbackIds: string[];
 }
 
@@ -22,13 +28,12 @@ interface Analysis {
   projectId: string;
   generatedAt: string;
   feedbackCount: number;
-  themes: {
+  summary: {
     bugs: number;
     features: number;
     other: number;
   };
   opportunities: Opportunity[];
-  topKeywords: string[];
 }
 
 export default function AnalysisPage({
@@ -40,6 +45,7 @@ export default function AnalysisPage({
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [expandedOpp, setExpandedOpp] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAnalysis();
@@ -88,7 +94,6 @@ export default function AnalysisPage({
   if (!analysis) {
     return (
       <div className="container mx-auto py-10 px-4 space-y-8">
-        {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-gray-500 text-sm">
@@ -99,23 +104,22 @@ export default function AnalysisPage({
               <span>Analysis</span>
             </div>
             <h1 className="text-3xl font-semibold text-gray-900">Analysis</h1>
-            <p className="text-gray-500">AI-powered insights from your feedback</p>
           </div>
         </div>
 
         <Card className="text-center py-16">
           <CardContent>
-            <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               No analysis yet
             </h3>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              Upload some feedback first, then click Analyze to get AI-powered insights.
+              Upload some feedback first, then click Analyze to get insights grouped by topic.
             </p>
             <div className="flex gap-4 justify-center">
               <Button asChild variant="outline">
                 <Link href={`/projects/${projectId}/feedback/new`}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Feedback
+                  Add Feedback
                 </Link>
               </Button>
               <Button
@@ -151,11 +155,11 @@ export default function AnalysisPage({
               <ArrowLeft className="w-4 h-4" /> Back
             </Link>
             <span>/</span>
-            <span>Analysis</span>
+              <span>Analysis</span>
           </div>
           <h1 className="text-3xl font-semibold text-gray-900">Analysis</h1>
           <p className="text-gray-500">
-            AI-powered insights from {analysis.feedbackCount} feedback items
+            {analysis.feedbackCount} items analyzed, grouped by topic
           </p>
         </div>
         <Button
@@ -176,7 +180,7 @@ export default function AnalysisPage({
         </Button>
       </div>
 
-      {/* Quick Stats */}
+      {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
@@ -184,8 +188,8 @@ export default function AnalysisPage({
               <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{analysis.themes.bugs}</p>
-              <p className="text-sm text-gray-500">Bugs</p>
+              <p className="text-2xl font-semibold">{analysis.summary.bugs}</p>
+              <p className="text-sm text-gray-500">Bugs reported</p>
             </div>
           </CardContent>
         </Card>
@@ -195,86 +199,120 @@ export default function AnalysisPage({
               <Zap className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{analysis.themes.features}</p>
-              <p className="text-sm text-gray-500">Features</p>
+              <p className="text-2xl font-semibold">{analysis.summary.features}</p>
+              <p className="text-sm text-gray-500">Features requested</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-2 bg-green-100 rounded">
-              <Target className="w-5 h-5 text-green-600" />
+            <div className="p-2 bg-purple-100 rounded">
+              <TrendingUp className="w-5 h-5 text-purple-600" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{analysis.opportunities.length}</p>
-              <p className="text-sm text-gray-500">Opportunities</p>
+              <p className="text-sm text-gray-500">Topics found</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Top Opportunities */}
+      {/* Opportunities */}
       <section>
         <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5" /> Top Opportunities
+          <TrendingUp className="w-5 h-5" /> What to Work On
         </h2>
         <div className="grid gap-4">
           {analysis.opportunities.map((opp) => (
-            <Card key={opp.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        className={
-                          opp.impact === "high"
-                            ? "bg-red-100 text-red-700"
-                            : opp.impact === "medium"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-green-100 text-green-700"
-                        }
-                      >
-                        {opp.impact.toUpperCase()} IMPACT
-                      </Badge>
-                      <Badge variant="outline">
-                        Score: {opp.impactScore}
-                      </Badge>
-                      <Badge variant="secondary">
-                        {opp.feedbackCount} items
-                      </Badge>
+            <Card key={opp.id} className="overflow-hidden">
+              <CardContent className="p-0">
+                {/* Header - always visible */}
+                <div className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          className={
+                            opp.impact === "high"
+                              ? "bg-red-100 text-red-700"
+                              : opp.impact === "medium"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-green-100 text-green-700"
+                          }
+                        >
+                          {opp.impact.toUpperCase()} PRIORITY
+                        </Badge>
+                        <Badge variant="outline">
+                          Score: {opp.impactScore}
+                        </Badge>
+                        {opp.enterpriseCount > 0 && (
+                          <Badge variant="secondary">
+                            {opp.enterpriseCount} enterprise
+                          </Badge>
+                        )}
+                        <Badge variant="outline">
+                          {opp.feedbackCount} mentions
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {opp.title}
+                      </h3>
+                      <p className="text-gray-600">{opp.description}</p>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {opp.title}
-                    </h3>
-                    <p className="text-gray-600">{opp.description}</p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={expandedOpp === opp.id ? "secondary" : "default"}
+                        size="sm"
+                        onClick={() => setExpandedOpp(expandedOpp === opp.id ? null : opp.id)}
+                      >
+                        {expandedOpp === opp.id ? (
+                          <>
+                            <ChevronUp className="w-4 h-4 mr-1" /> Hide examples
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4 mr-1" /> Show examples
+                          </>
+                        )}
+                      </Button>
+                      <Button asChild>
+                        <Link href={`/projects/${projectId}/decisions/new?opportunityId=${opp.id}`}>
+                          Create Decision
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
-                  <Button asChild>
-                    <Link href={`/projects/${projectId}/decisions/new?opportunityId=${opp.id}`}>
-                      Create Decision
-                    </Link>
-                  </Button>
                 </div>
+
+                {/* Expanded examples */}
+                {expandedOpp === opp.id && (
+                  <div className="border-t bg-gray-50 p-6">
+                    <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      What customers are saying:
+                    </h4>
+                    <div className="space-y-3">
+                      {opp.examples.map((example, i) => (
+                        <div
+                          key={i}
+                          className="bg-white p-4 rounded-lg border text-sm text-gray-700 italic"
+                        >
+                          "{example}"
+                        </div>
+                      ))}
+                    </div>
+                    {opp.feedbackCount > 3 && (
+                      <p className="text-sm text-gray-500 mt-3">
+                        +{opp.feedbackCount - 3} more similar reports
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
-
-      {/* Top Keywords */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Common Topics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {analysis.topKeywords.map((keyword) => (
-              <Badge key={keyword} variant="outline" className="text-sm">
-                {keyword}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Generated At */}
       <p className="text-sm text-gray-400 text-center">
