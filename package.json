@@ -11,8 +11,8 @@
     "worker": "tsx lib/worker.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.52",
     "@ai-sdk/openai": "^3.0.25",
-    "@ai-sdk/google": "^2.0.13",
     "@prisma/client": "^6.19.2",
     "ai": "^6.0.69",
     "better-auth": "^1.4.18",

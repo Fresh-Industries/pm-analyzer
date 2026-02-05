@@ -86,6 +86,7 @@ model Project {
   themes          Theme[]
   analyses        Analysis[]
   feedbackJobs    FeedbackJob[]
+  decisions       Decision[]
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 

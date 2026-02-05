@@ -41,17 +41,19 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
   });
 
   const handleCopySpec = async (item: Feedback) => {
-    if (!item.spec) {
-      alert("No spec available for this feedback");
-      return;
+    try {
+      const response = await fetch(`/api/feedback/${item.id}/implementation`);
+      if (!response.ok) {
+        const { message } = await response.json();
+        throw new Error(message || "Failed to generate implementation text");
+      }
+      const data = await response.json();
+      await navigator.clipboard.writeText(data.text);
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error: any) {
+      alert(error.message || "Unable to copy implementation text");
     }
-
-    const spec = item.spec as any;
-    const implementationText = generateImplementationText(item, spec);
-
-    await navigator.clipboard.writeText(implementationText);
-    setCopiedId(item.id);
-    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const getStatusBadge = (status: string) => {
@@ -72,51 +74,45 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
         <Input
-          placeholder="Search feedback..."
-          className="pl-8"
+          placeholder="Search feedback by keyword or source..."
+          className="pl-10 h-12 rounded-2xl bg-white dark:bg-zinc-900"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        <Button
-          size="sm"
-          variant={filter === "all" ? "default" : "outline"}
-          onClick={() => setFilter("all")}
-        >
-          All
-        </Button>
-        <Button
-          size="sm"
-          variant={filter === "sentry" ? "default" : "outline"}
-          onClick={() => setFilter("sentry")}
-        >
-          Linked to Sentry
-        </Button>
-        <Button
-          size="sm"
-          variant={filter === "pr" ? "default" : "outline"}
-          onClick={() => setFilter("pr")}
-        >
-          Has PR
-        </Button>
+        {[
+          { key: "all", label: "All" },
+          { key: "sentry", label: "Linked to Sentry" },
+          { key: "pr", label: "Has PR" },
+        ].map(({ key, label }) => (
+          <Button
+            key={key}
+            size="sm"
+            variant={filter === key ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => setFilter(key as any)}
+          >
+            {label}
+          </Button>
+        ))}
       </div>
 
       <div className="space-y-4">
         {filtered.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-12 text-zinc-500 dark:text-zinc-400 border-2 border-dashed rounded-2xl">
             No feedback found.
           </div>
         ) : (
           filtered.map((item) => (
             <Card key={item.id} className="overflow-hidden">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-start flex-wrap gap-2">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex justify-between items-start flex-wrap gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
                     {getStatusBadge(item.status)}
                     {item.type && (
@@ -129,12 +125,11 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
                         {item.type}
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
                       {item.source} •{" "}
                       {new Date(item.createdAt).toLocaleDateString()}
                     </span>
 
-                    {/* Integration badges */}
                     <div className="flex items-center gap-1">
                       {item.sentryIssueUrl && (
                         <Badge
@@ -148,7 +143,7 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
                       {item.githubPrUrl && (
                         <Badge
                           variant="outline"
-                          className="text-[10px] bg-gray-100 border-gray-300"
+                          className="text-[10px] bg-zinc-100 border-zinc-300"
                         >
                           <Github className="w-3 h-3 mr-1" />
                           PR
@@ -207,16 +202,14 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
                   </div>
                 </div>
 
-                <p className="text-sm leading-relaxed">{item.text}</p>
+                <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{item.text}</p>
 
-                {/* Expanded spec view */}
                 {expandedSpec === item.id && item.spec && (
                   <SpecViewer spec={item.spec as any} />
                 )}
 
-                {/* Show extra info for Sentry bugs */}
                 {item.sentryIssueUrl && item.errorFrequency && (
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
                     <AlertTriangle className="w-3 h-3" />
                     Affecting{" "}
                     <span className="font-medium">
@@ -259,7 +252,7 @@ interface SpecViewerProps {
 function SpecViewer({ spec }: SpecViewerProps) {
   const normalized = normalizeSpec(spec);
   return (
-    <div className="bg-muted/50 rounded-lg p-4 space-y-3 text-sm">
+    <div className="bg-zinc-50 dark:bg-zinc-900/60 rounded-2xl p-5 space-y-4 text-sm border border-zinc-200/50 dark:border-zinc-800/50">
       {normalized.title && (
         <div>
           <strong className="text-blue-600">Title:</strong> {normalized.title}
@@ -273,16 +266,16 @@ function SpecViewer({ spec }: SpecViewerProps) {
       {normalized.userStory && (
         <div>
           <strong className="text-green-600">User Story:</strong>
-          <p className="mt-1 text-gray-700">{normalized.userStory}</p>
+          <p className="mt-1 text-zinc-700 dark:text-zinc-300">{normalized.userStory}</p>
         </div>
       )}
       {normalized.acceptanceCriteria && normalized.acceptanceCriteria.length > 0 && (
         <div>
           <strong className="text-purple-600">Acceptance Criteria:</strong>
           <ul className="mt-1 space-y-1">
-            {normalized.acceptanceCriteria.map((crit, i) => (
+            {normalized.acceptanceCriteria.map((crit: string, i: number) => (
               <li key={i} className="flex items-start gap-2">
-                <span className="text-gray-400">•</span>
+                <span className="text-zinc-400">•</span>
                 <span>{crit}</span>
               </li>
             ))}
@@ -292,16 +285,16 @@ function SpecViewer({ spec }: SpecViewerProps) {
       {normalized.technicalNotes && (
         <div>
           <strong className="text-orange-600">Technical Notes:</strong>
-          <p className="mt-1 text-gray-700">{normalized.technicalNotes}</p>
+          <p className="mt-1 text-zinc-700 dark:text-zinc-300">{normalized.technicalNotes}</p>
         </div>
       )}
       {normalized.reproductionSteps && normalized.reproductionSteps.length > 0 && (
         <div>
           <strong className="text-red-600">Reproduction Steps:</strong>
           <ul className="mt-1 space-y-1">
-            {normalized.reproductionSteps.map((step, i) => (
+            {normalized.reproductionSteps.map((step: string, i: number) => (
               <li key={i} className="flex items-start gap-2">
-                <span className="text-gray-400">•</span>
+                <span className="text-zinc-400">•</span>
                 <span>{step}</span>
               </li>
             ))}
@@ -311,20 +304,20 @@ function SpecViewer({ spec }: SpecViewerProps) {
       {normalized.expectedBehavior && (
         <div>
           <strong className="text-green-700">Expected Behavior:</strong>
-          <p className="mt-1 text-gray-700">{normalized.expectedBehavior}</p>
+          <p className="mt-1 text-zinc-700 dark:text-zinc-300">{normalized.expectedBehavior}</p>
         </div>
       )}
       {normalized.actualBehavior && (
         <div>
           <strong className="text-red-600">Actual Behavior:</strong>
-          <p className="mt-1 text-gray-700">{normalized.actualBehavior}</p>
+          <p className="mt-1 text-zinc-700 dark:text-zinc-300">{normalized.actualBehavior}</p>
         </div>
       )}
       {normalized.assumptions && normalized.assumptions.length > 0 && (
         <div>
-          <strong className="text-gray-500">Assumptions:</strong>
-          <ul className="mt-1 text-gray-600">
-            {normalized.assumptions.map((a, i) => (
+          <strong className="text-zinc-500">Assumptions:</strong>
+          <ul className="mt-1 text-zinc-600 dark:text-zinc-400">
+            {normalized.assumptions.map((a: string, i: number) => (
               <li key={i}>• {a}</li>
             ))}
           </ul>
@@ -333,8 +326,8 @@ function SpecViewer({ spec }: SpecViewerProps) {
       {normalized.risks && normalized.risks.length > 0 && (
         <div>
           <strong className="text-red-500">Risks:</strong>
-          <ul className="mt-1 text-red-600">
-            {normalized.risks.map((r, i) => (
+          <ul className="mt-1 text-red-600 dark:text-red-400">
+            {normalized.risks.map((r: string, i: number) => (
               <li key={i}>• {r}</li>
             ))}
           </ul>
@@ -342,78 +335,6 @@ function SpecViewer({ spec }: SpecViewerProps) {
       )}
     </div>
   );
-}
-
-function generateImplementationText(item: Feedback, spec: any): string {
-  const normalized = normalizeSpec(spec);
-  const isBug = item.type === "bug";
-  const lines = [
-    `## ${isBug ? "Bug Fix" : "Feature Implementation"}`,
-    ``,
-    `**Feedback:** ${item.text}`,
-    ``,
-    `---`,
-    ``,
-    ...(normalized.summary
-      ? [`**Summary:** ${normalized.summary}`, ``]
-      : []),
-  ];
-
-  if (isBug) {
-    lines.push(`**Reproduction Steps:**`);
-    lines.push(
-      ...(normalized.reproductionSteps && normalized.reproductionSteps.length > 0
-        ? normalized.reproductionSteps.map((s) => `- ${s}`)
-        : [`- (not provided)`])
-    );
-    lines.push(``);
-    lines.push(`**Expected Behavior:**`);
-    lines.push(normalized.expectedBehavior || "(not provided)");
-    lines.push(``);
-    lines.push(`**Actual Behavior:**`);
-    lines.push(normalized.actualBehavior || "(not provided)");
-    lines.push(``);
-  } else {
-    lines.push(`**User Story:**`);
-    lines.push(normalized.userStory || "(not provided)");
-    lines.push(``);
-    lines.push(`**Acceptance Criteria:**`);
-    lines.push(
-      ...(normalized.acceptanceCriteria && normalized.acceptanceCriteria.length > 0
-        ? normalized.acceptanceCriteria.map((crit: string) => `- [ ] ${crit}`)
-        : [`- (not provided)`])
-    );
-    lines.push(``);
-    if (normalized.technicalNotes) {
-      lines.push(`**Technical Notes:**`);
-      lines.push(normalized.technicalNotes);
-      lines.push(``);
-    }
-  }
-
-  if (normalized.assumptions && normalized.assumptions.length > 0) {
-    lines.push(`**Assumptions:**`);
-    lines.push(...normalized.assumptions.map((a: string) => `- ${a}`));
-    lines.push(``);
-  }
-
-  if (normalized.risks && normalized.risks.length > 0) {
-    lines.push(`**Risks to Consider:**`);
-    lines.push(...normalized.risks.map((r: string) => `- ${r}`));
-    lines.push(``);
-  }
-
-  lines.push(`---`);
-  lines.push(``);
-  lines.push(`**Instructions for Cursor/Claude Code:**`);
-  lines.push(`1. Review the user story and acceptance criteria above`);
-  lines.push(`2. Implement the feature/fix following the AC`);
-  lines.push(`3. Add appropriate tests`);
-  lines.push(`4. Create a PR with clear description linking to this feedback`);
-  lines.push(``);
-  lines.push(`*This spec was generated by PM Analyzer from customer feedback.*`);
-
-  return lines.join("\n");
 }
 
 function normalizeSpec(spec: any) {
