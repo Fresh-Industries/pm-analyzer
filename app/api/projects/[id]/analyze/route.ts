@@ -44,7 +44,7 @@ export async function POST(
       }
     });
 
-    // Calculate impact scores
+    // Calculate impact scores based on customer tier and feedback type
     const calculateImpact = (items: typeof feedback) => {
       let score = 0;
       items.forEach((item) => {
@@ -52,13 +52,10 @@ export async function POST(
         if (item.type === "bug") score += 30;
         else if (item.type === "feature") score += 20;
 
-        // Customer tier bonus
+        // Customer tier bonus (Enterprise = highest priority)
         if (item.customerTier === "enterprise") score += 50;
         else if (item.customerTier === "pro") score += 30;
         else if (item.customerTier === "starter") score += 10;
-
-        // Revenue bonus
-        score += (item.revenue || 0) / 100;
       });
       return Math.min(score, 100);
     };

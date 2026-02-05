@@ -20,7 +20,6 @@ export default function NewFeedbackPage({ params }: { params: Promise<{ id: stri
     type: "feature",
     source: "",
     customerTier: "Free",
-    revenue: 0,
     content: "",
     analysisModel: DEFAULT_ANALYSIS_MODEL_ID,
   });
@@ -29,7 +28,7 @@ export default function NewFeedbackPage({ params }: { params: Promise<{ id: stri
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "revenue" ? parseFloat(value) || 0 : value,
+      [name]: value,
     }));
   };
 
@@ -89,28 +88,13 @@ export default function NewFeedbackPage({ params }: { params: Promise<{ id: stri
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <option value="bug">Bug Report</option>
-                  <option value="feature">Feature Request</option>
+                  <option value="bug">🐛 Bug Report</option>
+                  <option value="feature">💡 Feature Request</option>
                 </select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="analysisModel">Analysis Model</Label>
-                <select
-                  id="analysisModel"
-                  name="analysisModel"
-                  value={formData.analysisModel}
-                  onChange={handleChange}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {ANALYSIS_MODELS.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="customerTier">Customer Tier</Label>
                 <select
@@ -118,56 +102,71 @@ export default function NewFeedbackPage({ params }: { params: Promise<{ id: stri
                   name="customerTier"
                   value={formData.customerTier}
                   onChange={handleChange}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <option value="Free">Free</option>
-                  <option value="Pro">Pro</option>
+                  <option value="Free">Free / Unknown</option>
+                  <option value="Pro">Pro / Paid</option>
                   <option value="Enterprise">Enterprise</option>
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="source">Source</Label>
-                <Input
-                  id="source"
-                  name="source"
-                  placeholder="e.g. Email, Intercom"
-                  value={formData.source}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="revenue">Associated Revenue ($)</Label>
-                <Input
-                  id="revenue"
-                  name="revenue"
-                  type="number"
-                  placeholder="0"
-                  value={formData.revenue}
-                  onChange={handleChange}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="source">Source (optional)</Label>
+              <Input
+                id="source"
+                name="source"
+                placeholder="e.g. Support email, Twitter, Intercom"
+                value={formData.source}
+                onChange={handleChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                Helps you track where this feedback came from
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content">Feedback Content</Label>
+              <Label htmlFor="content">Feedback</Label>
               <textarea
                 id="content"
                 name="content"
                 rows={6}
                 required
-                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Describe the feedback, bug, or feature request..."
+                className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                placeholder="Paste the customer feedback, bug description, or feature request..."
                 value={formData.content}
                 onChange={handleChange}
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="analysisModel">AI Model</Label>
+                <select
+                  id="analysisModel"
+                  name="analysisModel"
+                  value={formData.analysisModel}
+                  onChange={handleChange}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {ANALYSIS_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Higher = smarter but slower
+                </p>
+              </div>
+            </div>
+
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => router.back()}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Feedback"}
               </Button>
