@@ -249,7 +249,7 @@ export default function AnalysisPage({
                     <p className="text-gray-600">{opp.description}</p>
                   </div>
                   <Button asChild>
-                    <Link href={`/projects/${projectId}/decisions/new`}>
+                    <Link href={`/projects/${projectId}/decisions/new?opportunityId=${opp.id}`}>
                       Create Decision
                     </Link>
                   </Button>

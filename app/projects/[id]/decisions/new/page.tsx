@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, use, useEffect, Suspense } from "react";
+import { useState, use, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Save, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Save, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface FeedbackItem {
   id: string;
@@ -18,11 +17,30 @@ interface FeedbackItem {
   createdAt: string;
 }
 
-function NewDecisionForm({ projectId }: { projectId: string }) {
+interface Opportunity {
+  id: string;
+  title: string;
+  theme: string;
+  description: string;
+  impact: "high" | "medium" | "low";
+  impactScore: number;
+  feedbackCount: number;
+  feedbackIds: string[];
+}
+
+interface NewDecisionPageProps {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string; opportunityId?: string }>;
+}
+
+export default function NewDecisionPage({ params, searchParams }: NewDecisionPageProps) {
+  const { id: projectId } = use(params);
+  const resolvedSearchParams = use(searchParams);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -33,20 +51,39 @@ function NewDecisionForm({ projectId }: { projectId: string }) {
     confidence: "medium",
   });
 
+  // Fetch opportunity data if coming from analysis
   useEffect(() => {
-    const title = searchParams.get("title");
-    const summary = searchParams.get("summary");
-    if (title || summary) {
-      setFormData(prev => ({
-        ...prev,
-        title: title || prev.title,
-        summary: summary || prev.summary,
-      }));
+    if (resolvedSearchParams.opportunityId) {
+      fetchOpportunity();
     }
-  }, [searchParams]);
+  }, [resolvedSearchParams.opportunityId]);
 
-  // Mock feedback - in real app, fetch from API
-  const linkedFeedback: FeedbackItem[] = [];
+  const fetchOpportunity = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/analyze`);
+      if (res.ok) {
+        const analysis = await res.json();
+        const opp = analysis.opportunities?.find((o: Opportunity) => o.id === resolvedSearchParams.opportunityId);
+        if (opp) {
+          setOpportunity(opp);
+          // Auto-fill form
+          setFormData({
+            title: opp.title,
+            summary: opp.description,
+            scope: `Build/improve: ${opp.title}\n\nBased on ${opp.feedbackCount} customer feedback items.`,
+            nonGoals: `- Mobile-specific changes (future iteration)\n- Related features not mentioned in feedback\n- Performance optimizations beyond scope`,
+            risks: `- Customer requirements may evolve\n- Dependencies on other teams\n- Technical complexity unknown`,
+            confidence: opp.impact === "high" ? "high" : opp.impact === "low" ? "low" : "medium",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch opportunity:", err);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -66,7 +103,7 @@ function NewDecisionForm({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          linkedFeedbackIds: linkedFeedback.map((f) => f.id),
+          linkedFeedbackIds: opportunity?.feedbackIds || [],
         }),
       });
 
@@ -81,180 +118,6 @@ function NewDecisionForm({ projectId }: { projectId: string }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {error}
-        </div>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Decision Details</CardTitle>
-          <CardDescription>
-            What decision are you making and why?
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              name="title"
-              placeholder="e.g., Implement dark mode for dashboard"
-              value={formData.title}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="summary">Summary *</Label>
-            <textarea
-              id="summary"
-              name="summary"
-              rows={3}
-              placeholder="What decision are you making and why?"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={formData.summary}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="confidence">Confidence</Label>
-              <select
-                id="confidence"
-                name="confidence"
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-                value={formData.confidence}
-                onChange={handleChange}
-              >
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Scope & Boundaries</CardTitle>
-          <CardDescription>
-            What's included and what's NOT included
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="scope">Scope (what's included)</Label>
-            <textarea
-              id="scope"
-              name="scope"
-              rows={3}
-              placeholder="What will be built?"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={formData.scope}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="nonGoals">Non-goals (what's NOT included)</Label>
-            <textarea
-              id="nonGoals"
-              name="nonGoals"
-              rows={3}
-              placeholder="What won't be built? What are you explicitly NOT doing?"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={formData.nonGoals}
-              onChange={handleChange}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Risks & Mitigation</CardTitle>
-          <CardDescription>
-            What could go wrong and how to handle it
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="risks">Risks</Label>
-            <textarea
-              id="risks"
-              name="risks"
-              rows={3}
-              placeholder="What risks exist? How will you mitigate them?"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-              value={formData.risks}
-              onChange={handleChange}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {linkedFeedback.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Linked Feedback</CardTitle>
-            <CardDescription>
-              Customer evidence that informed this decision
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {linkedFeedback.map((feedback) => (
-                <div
-                  key={feedback.id}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                >
-                  <Checkbox checked disabled />
-                  <div>
-                    <p className="text-sm font-medium">{feedback.type}</p>
-                    <p className="text-xs text-gray-500 line-clamp-1">
-                      {feedback.text}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-          {loading ? (
-            <>Creating...</>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" /> Create Decision
-            </>
-          )}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-export default function NewDecisionPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: projectId } = use(params);
-
-  return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-10 px-4 max-w-3xl">
         {/* Header */}
@@ -267,13 +130,182 @@ export default function NewDecisionPage({ params }: { params: Promise<{ id: stri
           </Link>
           <h1 className="text-3xl font-semibold text-gray-900">Create Decision</h1>
           <p className="text-gray-500 mt-1">
-            Document a product decision and prepare for handoff
+            {opportunity
+              ? "Review and edit the auto-generated decision"
+              : "Document a product decision and prepare for handoff"}
           </p>
         </div>
 
-        <Suspense fallback={<div>Loading form...</div>}>
-          <NewDecisionForm projectId={projectId} />
-        </Suspense>
+        {/* Auto-filled indicator */}
+        {opportunity && (
+          <Card className="mb-6 bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-blue-700">
+                <Loader2 className={`w-4 h-4 ${analyzing ? "animate-spin" : ""}`} />
+                <span className="font-medium">
+                  {analyzing ? "Auto-generating from analysis..." : "Auto-filled from analysis"}
+                </span>
+              </div>
+              <p className="text-sm text-blue-600 mt-1">
+                Based on: {opportunity.title} ({opportunity.feedbackCount} items, {opportunity.impact} impact)
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Decision Details</CardTitle>
+              <CardDescription>
+                What decision are you making and why?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  name="title"
+                  placeholder="e.g., Implement dark mode for dashboard"
+                  value={formData.title}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="summary">Summary *</Label>
+                <textarea
+                  id="summary"
+                  name="summary"
+                  rows={3}
+                  placeholder="What decision are you making and why?"
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  value={formData.summary}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="confidence">Confidence</Label>
+                  <select
+                    id="confidence"
+                    name="confidence"
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={formData.confidence}
+                    onChange={handleChange}
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Scope & Boundaries</CardTitle>
+              <CardDescription>
+                What's included and what's NOT included
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="scope">Scope (what's included)</Label>
+                <textarea
+                  id="scope"
+                  name="scope"
+                  rows={4}
+                  placeholder="What will be built?"
+                  className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                  value={formData.scope}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nonGoals">Non-goals (what's NOT included)</Label>
+                <textarea
+                  id="nonGoals"
+                  name="nonGoals"
+                  rows={3}
+                  placeholder="What won't be built? What are you explicitly NOT doing?"
+                  className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                  value={formData.nonGoals}
+                  onChange={handleChange}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Risks & Mitigation</CardTitle>
+              <CardDescription>
+                What could go wrong and how to handle it
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="risks">Risks</Label>
+                <textarea
+                  id="risks"
+                  name="risks"
+                  rows={3}
+                  placeholder="What risks exist? How will you mitigate them?"
+                  className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                  value={formData.risks}
+                  onChange={handleChange}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Evidence Source */}
+          {opportunity && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Based on Evidence</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  This decision is based on {opportunity.feedbackCount} customer feedback items
+                  about "{opportunity.title}" with {opportunity.impact} impact score.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+              {loading ? (
+                <>Creating...</>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" /> Create & Send
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
