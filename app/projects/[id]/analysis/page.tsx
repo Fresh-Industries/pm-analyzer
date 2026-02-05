@@ -1,73 +1,145 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, TrendingUp, AlertTriangle, Target, Zap } from "lucide-react";
+import { ArrowLeft, TrendingUp, AlertTriangle, Zap, Target, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+interface Opportunity {
+  id: string;
+  title: string;
+  theme: string;
+  description: string;
+  impact: "high" | "medium" | "low";
+  impactScore: number;
+  feedbackCount: number;
+  feedbackIds: string[];
+}
 
-export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+interface Analysis {
+  projectId: string;
+  generatedAt: string;
+  feedbackCount: number;
+  themes: {
+    bugs: number;
+    features: number;
+    other: number;
+  };
+  opportunities: Opportunity[];
+  topKeywords: string[];
+}
 
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: {
-      _count: { select: { feedback: true } },
-      feedback: {
-        orderBy: { createdAt: "desc" },
-        take: 100,
-      },
-    },
-  });
+export default function AnalysisPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: projectId } = use(params) as { id: string };
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
 
-  if (!project) {
-    notFound();
-  }
+  useEffect(() => {
+    fetchAnalysis();
+  }, [projectId]);
 
-  // Simple analysis - group feedback by type and count
-  const bugs = project.feedback.filter((f) => f.type === "bug");
-  const features = project.feedback.filter((f) => f.type === "feature");
-  const other = project.feedback.filter((f) => !f.type || f.type === "other");
-
-  // Calculate "impact" - bugs and features with customer tier get higher scores
-  const impactScore = (f: typeof project.feedback[0]) => {
-    let score = 0;
-    if (f.type === "bug") score += 30;
-    if (f.type === "feature") score += 20;
-    if (f.customerTier === "enterprise") score += 50;
-    else if (f.customerTier === "pro") score += 30;
-    else if (f.customerTier === "starter") score += 10;
-    score += (f.revenue || 0) / 100;
-    return score;
+  const fetchAnalysis = async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/analyze`);
+      if (res.ok) {
+        const data = await res.json();
+        setAnalysis(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch analysis:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const sortedFeedback = [...project.feedback]
-    .sort((a, b) => impactScore(b) - impactScore(a))
-    .slice(0, 10);
+  const handleAnalyze = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/analyze`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalysis(data);
+      }
+    } catch (error) {
+      console.error("Analysis failed:", error);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
-  // Group by potential themes (simplified)
-  const themes = [
-    {
-      title: "Performance & Speed",
-      count: Math.floor(Math.random() * 10) + 3,
-      impact: "high",
-      description: "Users reporting slow load times and performance issues",
-    },
-    {
-      title: "User Experience",
-      count: Math.floor(Math.random() * 15) + 5,
-      impact: "high",
-      description: "Confusing navigation and UI pain points",
-    },
-    {
-      title: "Integrations",
-      count: Math.floor(Math.random() * 8) + 2,
-      impact: "medium",
-      description: "Missing integrations with popular tools",
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="container mx-auto py-10 px-4 text-center">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+        <p className="text-gray-500">Loading analysis...</p>
+      </div>
+    );
+  }
+
+  if (!analysis) {
+    return (
+      <div className="container mx-auto py-10 px-4 space-y-8">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Link href={`/projects/${projectId}`} className="hover:text-gray-900 flex items-center gap-1">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </Link>
+              <span>/</span>
+              <span>Analysis</span>
+            </div>
+            <h1 className="text-3xl font-semibold text-gray-900">Analysis</h1>
+            <p className="text-gray-500">AI-powered insights from your feedback</p>
+          </div>
+        </div>
+
+        <Card className="text-center py-16">
+          <CardContent>
+            <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              No analysis yet
+            </h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Upload some feedback first, then click Analyze to get AI-powered insights.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button asChild variant="outline">
+                <Link href={`/projects/${projectId}/feedback/new`}>
+                  <Plus className="w-4 h-4 mr-2" /> Add Feedback
+                </Link>
+              </Button>
+              <Button
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {analyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" /> Analyze
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-10 px-4 space-y-8">
@@ -75,57 +147,67 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Link href={`/projects/${id}`} className="hover:text-gray-900 flex items-center gap-1">
+            <Link href={`/projects/${projectId}`} className="hover:text-gray-900 flex items-center gap-1">
               <ArrowLeft className="w-4 h-4" /> Back
             </Link>
             <span>/</span>
-            <span>{project.name}</span>
+            <span>Analysis</span>
           </div>
           <h1 className="text-3xl font-semibold text-gray-900">Analysis</h1>
           <p className="text-gray-500">
-            Top opportunities ranked by potential impact
+            AI-powered insights from {analysis.feedbackCount} feedback items
           </p>
         </div>
+        <Button
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          variant="outline"
+        >
+          {analyzing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Re-analyzing...
+            </>
+          ) : (
+            <>
+              <Zap className="w-4 h-4 mr-2" /> Re-analyze
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold">{bugs.length}</p>
-                <p className="text-sm text-gray-500">Bugs</p>
-              </div>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-2 bg-red-100 rounded">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{analysis.themes.bugs}</p>
+              <p className="text-sm text-gray-500">Bugs</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded">
-                <Zap className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold">{features.length}</p>
-                <p className="text-sm text-gray-500">Features</p>
-              </div>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-2 bg-blue-100 rounded">
+              <Zap className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{analysis.themes.features}</p>
+              <p className="text-sm text-gray-500">Features</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded">
-                <Target className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold">{project._count.feedback}</p>
-                <p className="text-sm text-gray-500">Total</p>
-              </div>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-2 bg-green-100 rounded">
+              <Target className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{analysis.opportunities.length}</p>
+              <p className="text-sm text-gray-500">Opportunities</p>
             </div>
           </CardContent>
         </Card>
@@ -137,30 +219,37 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
           <TrendingUp className="w-5 h-5" /> Top Opportunities
         </h2>
         <div className="grid gap-4">
-          {themes.map((theme, i) => (
-            <Card key={i} className="hover:shadow-md transition-shadow">
+          {analysis.opportunities.map((opp) => (
+            <Card key={opp.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Badge
                         className={
-                          theme.impact === "high"
+                          opp.impact === "high"
                             ? "bg-red-100 text-red-700"
-                            : "bg-yellow-100 text-yellow-700"
+                            : opp.impact === "medium"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-green-100 text-green-700"
                         }
                       >
-                        {theme.impact} impact
+                        {opp.impact.toUpperCase()} IMPACT
                       </Badge>
-                      <Badge variant="outline">{theme.count} items</Badge>
+                      <Badge variant="outline">
+                        Score: {opp.impactScore}
+                      </Badge>
+                      <Badge variant="secondary">
+                        {opp.feedbackCount} items
+                      </Badge>
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {theme.title}
+                      {opp.title}
                     </h3>
-                    <p className="text-gray-600">{theme.description}</p>
+                    <p className="text-gray-600">{opp.description}</p>
                   </div>
-                  <Button asChild size="sm">
-                    <Link href={`/projects/${id}/decisions/new`}>
+                  <Button asChild>
+                    <Link href={`/projects/${projectId}/decisions/new`}>
                       Create Decision
                     </Link>
                   </Button>
@@ -171,53 +260,26 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
         </div>
       </section>
 
-      {/* Top Feedback Items */}
-      <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Highest Impact Feedback
-        </h2>
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {sortedFeedback.slice(0, 5).map((item) => (
-                <div key={item.id} className="p-4 hover:bg-gray-50">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge
-                          className={
-                            item.type === "bug"
-                              ? "bg-red-100 text-red-700"
-                              : item.type === "feature"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700"
-                          }
-                        >
-                          {item.type || "other"}
-                        </Badge>
-                        {item.customerTier && (
-                          <Badge variant="outline">{item.customerTier}</Badge>
-                        )}
-                      </div>
-                      <p className="text-gray-700">{item.text}</p>
-                      {item.source && (
-                        <p className="text-sm text-gray-500 mt-1">
-                          From: {item.source}
-                        </p>
-                      )}
-                    </div>
-                    <Button asChild size="sm" variant="ghost">
-                      <Link href={`/projects/${id}/feedback/new`}>
-                        Link to Decision
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+      {/* Top Keywords */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Common Topics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {analysis.topKeywords.map((keyword) => (
+              <Badge key={keyword} variant="outline" className="text-sm">
+                {keyword}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Generated At */}
+      <p className="text-sm text-gray-400 text-center">
+        Analysis generated at {new Date(analysis.generatedAt).toLocaleString()}
+      </p>
     </div>
   );
 }

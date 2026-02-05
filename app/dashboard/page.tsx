@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, FileText, Plus, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,12 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const projects = await prisma.project.findMany({
     orderBy: { updatedAt: "desc" },
-    take: 5,
+    include: {
+      _count: {
+        select: { feedback: true }
+      }
+    },
+    take: 10,
   });
 
   const allDecisions = await prisma.decision.findMany({
@@ -47,17 +53,21 @@ export default async function DashboardPage() {
             </Card>
           </Link>
 
-          <Card className="opacity-50 cursor-not-allowed">
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <BarChart3 className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">AI Analysis</h3>
-                <p className="text-sm text-gray-500">Coming soon</p>
-              </div>
-            </CardContent>
-          </Card>
+          <Link href={projects.length > 0 ? `/projects/${projects[0].id}/analysis` : "/projects/new"}>
+            <Card className="hover:shadow-md transition-all cursor-pointer">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <BarChart3 className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">AI Analysis</h3>
+                  <p className="text-sm text-gray-500">
+                    {projects.length > 0 ? 'Analyze your latest feedback' : 'Create a project to start'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Recent Decisions */}
@@ -122,18 +132,31 @@ export default async function DashboardPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Projects</h2>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
-                <Link key={project.id} href={`/projects/${project.id}`}>
-                  <Card className="hover:shadow-md transition-all cursor-pointer h-full">
+                <Card key={project.id} className="hover:shadow-md transition-all flex flex-col h-full">
+                  <Link href={`/projects/${project.id}`} className="flex-1">
                     <CardHeader>
-                      <CardTitle className="text-lg">{project.name}</CardTitle>
+                      <CardTitle className="text-lg flex justify-between items-center">
+                        {project.name}
+                        <Badge variant="secondary" className="text-xs">
+                          {project._count.feedback} items
+                        </Badge>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-gray-500 line-clamp-2">
                         {project.description || "No description"}
                       </p>
                     </CardContent>
-                  </Card>
-                </Link>
+                  </Link>
+                  <div className="p-4 border-t bg-gray-50/50 rounded-b-lg">
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <Link href={`/projects/${project.id}/analysis`}>
+                        <BarChart3 className="w-4 h-4 mr-2" />
+                        Analyze Feedback
+                      </Link>
+                    </Button>
+                  </div>
+                </Card>
               ))}
             </div>
           </section>
