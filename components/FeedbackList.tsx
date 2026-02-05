@@ -158,7 +158,8 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {item.status === "ready_for_implementation" && (
+                    {(item.status === "ready_for_implementation" ||
+                      item.status === "analyzed") && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -173,7 +174,8 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
                       </Button>
                     )}
 
-                    {item.status === "ready_for_implementation" && (
+                    {(item.status === "ready_for_implementation" ||
+                      item.status === "analyzed") && (
                       <Button
                         size="sm"
                         onClick={() => handleCopySpec(item)}
@@ -234,33 +236,51 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
 interface SpecViewerProps {
   spec: {
     title?: string;
+    summary?: string;
     userStory?: string;
     acceptanceCriteria?: string[];
     technicalNotes?: string;
+    reproductionSteps?: string[];
+    expectedBehavior?: string;
+    actualBehavior?: string;
     assumptions?: string[];
     risks?: string[];
+    details?: {
+      reproductionSteps?: string[];
+      expectedBehavior?: string;
+      actualBehavior?: string;
+      userStory?: string;
+      acceptanceCriteria?: string[];
+      technicalNotes?: string;
+    };
   };
 }
 
 function SpecViewer({ spec }: SpecViewerProps) {
+  const normalized = normalizeSpec(spec);
   return (
     <div className="bg-muted/50 rounded-lg p-4 space-y-3 text-sm">
-      {spec.title && (
+      {normalized.title && (
         <div>
-          <strong className="text-blue-600">Title:</strong> {spec.title}
+          <strong className="text-blue-600">Title:</strong> {normalized.title}
         </div>
       )}
-      {spec.userStory && (
+      {normalized.summary && (
+        <div>
+          <strong className="text-blue-600">Summary:</strong> {normalized.summary}
+        </div>
+      )}
+      {normalized.userStory && (
         <div>
           <strong className="text-green-600">User Story:</strong>
-          <p className="mt-1 text-gray-700">{spec.userStory}</p>
+          <p className="mt-1 text-gray-700">{normalized.userStory}</p>
         </div>
       )}
-      {spec.acceptanceCriteria && spec.acceptanceCriteria.length > 0 && (
+      {normalized.acceptanceCriteria && normalized.acceptanceCriteria.length > 0 && (
         <div>
           <strong className="text-purple-600">Acceptance Criteria:</strong>
           <ul className="mt-1 space-y-1">
-            {spec.acceptanceCriteria.map((crit, i) => (
+            {normalized.acceptanceCriteria.map((crit, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-gray-400">•</span>
                 <span>{crit}</span>
@@ -269,27 +289,52 @@ function SpecViewer({ spec }: SpecViewerProps) {
           </ul>
         </div>
       )}
-      {spec.technicalNotes && (
+      {normalized.technicalNotes && (
         <div>
           <strong className="text-orange-600">Technical Notes:</strong>
-          <p className="mt-1 text-gray-700">{spec.technicalNotes}</p>
+          <p className="mt-1 text-gray-700">{normalized.technicalNotes}</p>
         </div>
       )}
-      {spec.assumptions && spec.assumptions.length > 0 && (
+      {normalized.reproductionSteps && normalized.reproductionSteps.length > 0 && (
+        <div>
+          <strong className="text-red-600">Reproduction Steps:</strong>
+          <ul className="mt-1 space-y-1">
+            {normalized.reproductionSteps.map((step, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="text-gray-400">•</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {normalized.expectedBehavior && (
+        <div>
+          <strong className="text-green-700">Expected Behavior:</strong>
+          <p className="mt-1 text-gray-700">{normalized.expectedBehavior}</p>
+        </div>
+      )}
+      {normalized.actualBehavior && (
+        <div>
+          <strong className="text-red-600">Actual Behavior:</strong>
+          <p className="mt-1 text-gray-700">{normalized.actualBehavior}</p>
+        </div>
+      )}
+      {normalized.assumptions && normalized.assumptions.length > 0 && (
         <div>
           <strong className="text-gray-500">Assumptions:</strong>
           <ul className="mt-1 text-gray-600">
-            {spec.assumptions.map((a, i) => (
+            {normalized.assumptions.map((a, i) => (
               <li key={i}>• {a}</li>
             ))}
           </ul>
         </div>
       )}
-      {spec.risks && spec.risks.length > 0 && (
+      {normalized.risks && normalized.risks.length > 0 && (
         <div>
           <strong className="text-red-500">Risks:</strong>
           <ul className="mt-1 text-red-600">
-            {spec.risks.map((r, i) => (
+            {normalized.risks.map((r, i) => (
               <li key={i}>• {r}</li>
             ))}
           </ul>
@@ -300,36 +345,61 @@ function SpecViewer({ spec }: SpecViewerProps) {
 }
 
 function generateImplementationText(item: Feedback, spec: any): string {
+  const normalized = normalizeSpec(spec);
+  const isBug = item.type === "bug";
   const lines = [
-    `## ${item.type === "bug" ? "Bug Fix" : "Feature Implementation"}`,
+    `## ${isBug ? "Bug Fix" : "Feature Implementation"}`,
     ``,
     `**Feedback:** ${item.text}`,
     ``,
     `---`,
     ``,
-    `**User Story**${spec.userStory ? ":" : ""}`,
-    spec.userStory || "",
-    ``,
-    `**Acceptance Criteria:**`,
-    ...(spec.acceptanceCriteria || []).map((crit: string) => `- [ ] ${crit}`),
-    ``,
+    ...(normalized.summary
+      ? [`**Summary:** ${normalized.summary}`, ``]
+      : []),
   ];
 
-  if (spec.technicalNotes) {
-    lines.push(`**Technical Notes:**`);
-    lines.push(spec.technicalNotes);
+  if (isBug) {
+    lines.push(`**Reproduction Steps:**`);
+    lines.push(
+      ...(normalized.reproductionSteps && normalized.reproductionSteps.length > 0
+        ? normalized.reproductionSteps.map((s) => `- ${s}`)
+        : [`- (not provided)`])
+    );
     lines.push(``);
+    lines.push(`**Expected Behavior:**`);
+    lines.push(normalized.expectedBehavior || "(not provided)");
+    lines.push(``);
+    lines.push(`**Actual Behavior:**`);
+    lines.push(normalized.actualBehavior || "(not provided)");
+    lines.push(``);
+  } else {
+    lines.push(`**User Story:**`);
+    lines.push(normalized.userStory || "(not provided)");
+    lines.push(``);
+    lines.push(`**Acceptance Criteria:**`);
+    lines.push(
+      ...(normalized.acceptanceCriteria && normalized.acceptanceCriteria.length > 0
+        ? normalized.acceptanceCriteria.map((crit: string) => `- [ ] ${crit}`)
+        : [`- (not provided)`])
+    );
+    lines.push(``);
+    if (normalized.technicalNotes) {
+      lines.push(`**Technical Notes:**`);
+      lines.push(normalized.technicalNotes);
+      lines.push(``);
+    }
   }
 
-  if (spec.assumptions && spec.assumptions.length > 0) {
+  if (normalized.assumptions && normalized.assumptions.length > 0) {
     lines.push(`**Assumptions:**`);
-    lines.push(...spec.assumptions.map((a: string) => `- ${a}`));
+    lines.push(...normalized.assumptions.map((a: string) => `- ${a}`));
     lines.push(``);
   }
 
-  if (spec.risks && spec.risks.length > 0) {
+  if (normalized.risks && normalized.risks.length > 0) {
     lines.push(`**Risks to Consider:**`);
-    lines.push(...spec.risks.map((r: string) => `- ${r}`));
+    lines.push(...normalized.risks.map((r: string) => `- ${r}`));
     lines.push(``);
   }
 
@@ -344,4 +414,20 @@ function generateImplementationText(item: Feedback, spec: any): string {
   lines.push(`*This spec was generated by PM Analyzer from customer feedback.*`);
 
   return lines.join("\n");
+}
+
+function normalizeSpec(spec: any) {
+  const details = spec?.details ?? {};
+  return {
+    title: spec?.title,
+    summary: spec?.summary,
+    userStory: spec?.userStory ?? details.userStory,
+    acceptanceCriteria: spec?.acceptanceCriteria ?? details.acceptanceCriteria,
+    technicalNotes: spec?.technicalNotes ?? details.technicalNotes,
+    reproductionSteps: spec?.reproductionSteps ?? details.reproductionSteps,
+    expectedBehavior: spec?.expectedBehavior ?? details.expectedBehavior,
+    actualBehavior: spec?.actualBehavior ?? details.actualBehavior,
+    assumptions: spec?.assumptions,
+    risks: spec?.risks,
+  };
 }

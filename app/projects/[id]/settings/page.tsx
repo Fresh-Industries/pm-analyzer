@@ -1,21 +1,23 @@
-import { authClient } from "@/lib/auth-client";
 import { db } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getServerSession } from "@/lib/auth-server";
+
+export const dynamic = "force-dynamic";
 
 export default async function ProjectSettingsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await authClient.getSession();
-  if (!session?.data?.user) {
+  const session = await getServerSession();
+  if (!session?.user) {
     redirect("/sign-in");
   }
 
   const { id } = await params;
   const project = await db.project.findUnique({
-    where: { id, userId: session.data.user.id },
+    where: { id, userId: session.user.id },
   });
 
   if (!project) {

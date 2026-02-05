@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/prisma";
+import { DEFAULT_ANALYSIS_MODEL_ID, isAnalysisModelId } from "@/lib/ai-models";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +22,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Create feedback from widget
+    const envDefaultModel = process.env.DEFAULT_ANALYSIS_MODEL_ID;
+    const fallbackModel = isAnalysisModelId(envDefaultModel)
+      ? envDefaultModel
+      : DEFAULT_ANALYSIS_MODEL_ID;
+    const selectedModel = isAnalysisModelId(body.analysisModel)
+      ? body.analysisModel
+      : fallbackModel;
+
     const feedback = await db.feedback.create({
       data: {
         projectId: body.projectId,
@@ -31,6 +40,7 @@ export async function POST(request: NextRequest) {
         pageUrl: body.pageUrl || null,
         browserInfo: body.browserInfo || null,
         status: "pending_analysis",
+        analysisModel: selectedModel,
       },
     });
 

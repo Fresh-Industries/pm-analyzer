@@ -104,7 +104,7 @@ export const analysisWorker = new Worker(
       if (!feedback) throw new Error(`Feedback ${feedbackId} not found`);
 
       // Generate Spec
-      const spec = await generateSpec(feedback.text);
+      const spec = await generateSpec(feedback.text, feedback.analysisModel);
 
       // Update Feedback
       await prisma.feedback.update({

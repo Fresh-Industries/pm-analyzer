@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ANALYSIS_MODELS, DEFAULT_ANALYSIS_MODEL_ID } from "@/lib/ai-models";
 
 export default function NewFeedbackPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = use(params);
@@ -21,6 +22,7 @@ export default function NewFeedbackPage({ params }: { params: Promise<{ id: stri
     customerTier: "Free",
     revenue: 0,
     content: "",
+    analysisModel: DEFAULT_ANALYSIS_MODEL_ID,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -91,6 +93,22 @@ export default function NewFeedbackPage({ params }: { params: Promise<{ id: stri
                 >
                   <option value="bug">Bug Report</option>
                   <option value="feature">Feature Request</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="analysisModel">Analysis Model</Label>
+                <select
+                  id="analysisModel"
+                  name="analysisModel"
+                  value={formData.analysisModel}
+                  onChange={handleChange}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {ANALYSIS_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2">

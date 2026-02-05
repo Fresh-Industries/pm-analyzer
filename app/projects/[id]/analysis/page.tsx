@@ -5,15 +5,18 @@ import { ArrowLeft, Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeCluster } from "@/components/ThemeCluster";
 import { PriorityMatrix } from "@/components/PriorityMatrix";
-import { getProject } from "@/lib/api";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
-  let project;
-  try {
-    project = await getProject(id);
-  } catch (e) {
+  const project = await prisma.project.findUnique({
+    where: { id },
+  });
+
+  if (!project) {
     notFound();
   }
 

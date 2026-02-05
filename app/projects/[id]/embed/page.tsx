@@ -1,21 +1,24 @@
-import { authClient } from "@/lib/auth-client";
 import { db } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getServerSession } from "@/lib/auth-server";
+import { CopyButton } from "@/components/CopyButton";
+
+export const dynamic = "force-dynamic";
 
 export default async function ProjectEmbedPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await authClient.getSession();
-  if (!session?.data?.user) {
+  const session = await getServerSession();
+  if (!session?.user) {
     redirect("/sign-in");
   }
 
   const { id } = await params;
   const project = await db.project.findUnique({
-    where: { id, userId: session.data.user.id },
+    where: { id, userId: session.user.id },
   });
 
   if (!project) {
@@ -76,12 +79,10 @@ export default async function ProjectEmbedPage({
               <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
                 <code>{embedCode}</code>
               </pre>
-              <button
-                onClick={() => navigator.clipboard.writeText(embedCode)}
+              <CopyButton
+                value={embedCode}
                 className="mt-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium"
-              >
-                Copy to Clipboard
-              </button>
+              />
             </div>
 
             <div>

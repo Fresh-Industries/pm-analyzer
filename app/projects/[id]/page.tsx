@@ -4,7 +4,9 @@ import { ArrowLeft, BarChart2, Settings, Code, Upload, Terminal, Info } from "lu
 import { Button } from "@/components/ui/button";
 import { FeedbackUploader } from "@/components/FeedbackUploader";
 import { FeedbackList } from "@/components/FeedbackList";
-import { getProject } from "@/lib/api";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 // This is a server component
 export default async function ProjectDetailPage({
@@ -14,10 +16,16 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
 
-  let project;
-  try {
-    project = await getProject(id);
-  } catch (e) {
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      _count: {
+        select: { feedback: true },
+      },
+    },
+  });
+
+  if (!project) {
     notFound();
   }
 
@@ -103,16 +111,51 @@ export default async function ProjectDetailPage({
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Main Content - Feedback List */}
-        <div className="md:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Feedback</h2>
-            <span className="text-sm text-muted-foreground">
-              {project._count?.feedback || 0} items
-            </span>
-          </div>
-          <FeedbackList feedbacks={[]} />
+      {/* Main Content - Feedback List */}
+      <div className="md:col-span-2 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Feedback</h2>
+          <span className="text-sm text-muted-foreground">
+            {project._count?.feedback || 0} items
+          </span>
         </div>
+        <FeedbackList
+          feedbacks={(
+            await prisma.feedback.findMany({
+              where: { projectId: id },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+              select: {
+                id: true,
+                text: true,
+                source: true,
+                type: true,
+                customerTier: true,
+                revenue: true,
+                status: true,
+                githubPrUrl: true,
+                githubIssueUrl: true,
+                sentryIssueId: true,
+                sentryIssueUrl: true,
+                errorFrequency: true,
+                spec: true,
+                pageUrl: true,
+                browserInfo: true,
+                shippedAt: true,
+                projectId: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            })
+          ).map((item) => ({
+            ...item,
+            type: item.type === "bug" || item.type === "feature" ? item.type : null,
+            createdAt: item.createdAt.toISOString(),
+            updatedAt: item.updatedAt.toISOString(),
+            shippedAt: item.shippedAt ? item.shippedAt.toISOString() : null,
+          }))}
+        />
+      </div>
 
         {/* Sidebar - Upload & Status */}
         <div className="space-y-6">

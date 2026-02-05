@@ -7,8 +7,8 @@ export type Project = {
   githubRepo?: string | null;
   sentryOrg?: string | null;
   sentryProject?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
   _count?: {
     feedback: number;
   };
@@ -18,10 +18,11 @@ export type Feedback = {
   id: string;
   text: string;
   source?: string | null;
-  type?: 'bug' | 'feature' | null;
+  type?: string | null;
   customerTier?: string | null;
   revenue?: number | null;
-  status: 'pending_analysis' | 'analyzed' | 'ready_for_implementation' | 'shipped' | 'failed';
+  status: string;
+  analysisModel?: string | null;
   githubPrUrl?: string | null;
   githubIssueUrl?: string | null;
   sentryIssueId?: string | null;
@@ -30,10 +31,10 @@ export type Feedback = {
   spec?: any;
   pageUrl?: string | null;
   browserInfo?: string | null;
-  shippedAt?: string | null;
+  shippedAt?: string | Date | null;
   projectId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 };
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
@@ -50,7 +51,7 @@ export type Job = {
 };
 
 export async function getProjects(): Promise<Project[]> {
-  const res = await fetch('/api/projects');
+  const res = await fetch('/api/projects', { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch projects');
   return res.json();
 }
@@ -66,7 +67,7 @@ export async function createProject(name: string, description?: string): Promise
 }
 
 export async function getProject(id: string): Promise<Project> {
-  const res = await fetch(`/api/projects/${id}`);
+  const res = await fetch(`/api/projects/${id}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch project');
   return res.json();
 }
@@ -99,6 +100,7 @@ export async function submitFeedback(data: {
   tier?: string;
   pageUrl?: string;
   browserInfo?: string;
+  analysisModel?: string;
 }) {
   const res = await fetch('/api/feedback', {
     method: 'POST',

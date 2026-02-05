@@ -3,12 +3,19 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/ProjectCard";
-import { getProjects } from "@/lib/api";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  // In a real app, handle error/loading states.
-  // Next.js 15+ allows async components for server-side data fetching.
-  const projects = await getProjects().catch(() => []);
+  const projects = await prisma.project.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      _count: {
+        select: { feedback: true },
+      },
+    },
+  });
 
   return (
     <div className="container mx-auto py-10 px-4">

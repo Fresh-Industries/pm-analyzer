@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analysisQueue } from '@/lib/queue';
+import { DEFAULT_ANALYSIS_MODEL_ID, isAnalysisModelId } from '@/lib/ai-models';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { projectId, content, source, type, customerTier, revenue } = body;
+    const {
+      projectId,
+      content,
+      source,
+      type,
+      customerTier,
+      revenue,
+      analysisModel,
+      model,
+    } = body;
 
     if (!projectId || !content) {
       return NextResponse.json(
@@ -13,6 +23,14 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const envDefaultModel = process.env.DEFAULT_ANALYSIS_MODEL_ID;
+    const fallbackModel = isAnalysisModelId(envDefaultModel)
+      ? envDefaultModel
+      : DEFAULT_ANALYSIS_MODEL_ID;
+    const selectedModel = isAnalysisModelId(analysisModel || model)
+      ? (analysisModel || model)
+      : fallbackModel;
 
     const feedback = await prisma.feedback.create({
       data: {
@@ -23,6 +41,7 @@ export async function POST(req: NextRequest) {
         customerTier,
         revenue,
         status: 'pending_analysis',
+        analysisModel: selectedModel,
       },
     });
 
