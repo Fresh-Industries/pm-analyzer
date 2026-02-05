@@ -165,10 +165,11 @@ model Decision {
   title           String
   summary         String   @db.Text
   scope           String   @db.Text
+  nonGoals        String   @db.Text @map("non_goals")
+  acceptanceCriteria String @db.Text @map("acceptance_criteria")
   risks           String   @db.Text
-  nonGoals        String   @db.Text
-  confidence      String   // high, medium, low
-  status          String   @default("draft") // draft, finalized, handed_off
+  confidenceScore Float    @default(0) @map("confidence_score")
+  status          String   @default("draft") // draft, reviewed, sent
   linkedFeedbackIds String[] @map("linked_feedback_ids")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

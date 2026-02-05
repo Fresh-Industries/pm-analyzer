@@ -2,8 +2,8 @@
 
 import { useState, use } from "react";
 import Link from "next/link";
-import { notFound, useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Copy, Check, ExternalLink, FileText, Send } from "lucide-react";
+import { notFound } from "next/navigation";
+import { ArrowLeft, Copy, Check, ExternalLink, FileText, Send, Terminal, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,6 @@ export default function DecisionDetailPage({ params }: DecisionPageProps) {
   const resolvedParams = use(params);
   const projectId = resolvedParams.id;
   const decisionId = resolvedParams.decisionId;
-  const router = useRouter();
   const [copied, setCopied] = useState<string | null>(null);
 
   // In real app, fetch from API
@@ -33,6 +32,12 @@ export default function DecisionDetailPage({ params }: DecisionPageProps) {
     createdAt: new Date().toISOString(),
   };
 
+  const encodeUri = (str: string) => encodeURIComponent(str);
+
+  const cursorUrl = `https://cursor.sh/?command=ToggleTerminal`;
+  const linearUrl = `https://linear.app/new?title=${encodeUri(decision.title)}&description=${encodeUri(`${decision.summary}\n\nScope:\n${decision.scope}\n\nNon-Goals:\n${decision.nonGoals || "None"}\n\nRisks:\n${decision.risks || "None"}`)}`;
+  const slackUrl = `https://slack.com/app_redirect?channel=general&text=${encodeUri(`📋 *New Product Decision: ${decision.title}*\n\n*Summary:* ${decision.summary}\n*Confidence:* ${decision.confidence.toUpperCase()}\n\nCheck PM Analyzer for full details.`)}`;
+
   const formatForCursor = () => {
     return `## Feature: ${decision.title}
 
@@ -42,10 +47,10 @@ export default function DecisionDetailPage({ params }: DecisionPageProps) {
 ${decision.scope}
 
 **Non-Goals:**
-${decision.nonGoals}
+${decision.nonGoals || "None"}
 
 **Risks:**
-${decision.risks}
+${decision.risks || "None"}
 
 **Confidence:** ${decision.confidence}
 
@@ -61,7 +66,7 @@ Scope:
 ${decision.scope}
 
 Non-Goals:
-${decision.nonGoals}`;
+${decision.nonGoals || "None"}`;
   };
 
   const formatForSlack = () => {
@@ -71,7 +76,7 @@ ${decision.nonGoals}`;
 
 *Confidence:* ${decision.confidence.toUpperCase()}
 
-*Scope:*
+Scope:
 ${decision.scope.split('\n').map(l => `• ${l}`).join('\n')}
 
 Next steps: Check PM Analyzer for full decision details.`;
@@ -95,7 +100,7 @@ Next steps: Check PM Analyzer for full decision details.`;
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-gray-500 text-sm">
               <Link href={`/projects/${projectId}/decisions`} className="hover:text-gray-900 flex items-center gap-1">
-                <ArrowLeft className="w-4 h-4" /> Back to Decisions
+                <ArrowLeft className="w-4 h-4" /> Back
               </Link>
             </div>
             <h1 className="text-3xl font-semibold text-gray-900">{decision.title}</h1>
@@ -156,69 +161,105 @@ Next steps: Check PM Analyzer for full decision details.`;
           </CardContent>
         </Card>
 
-        {/* Handoff Actions */}
-        <Card className="bg-blue-50 border-blue-200">
+        {/* Handoff Actions - REAL BUTTONS */}
+        <Card className="bg-green-50 border-green-200">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Send className="w-5 h-5" /> Handoff
+              <Terminal className="w-5 h-5" /> Send to Engineering
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600">
-              Copy this decision to your preferred tool for implementation:
+              Open directly in your tools:
             </p>
 
             <div className="grid gap-3">
-              <Button
-                variant="outline"
-                className="justify-start h-auto py-3"
-                onClick={() => handleCopy("cursor", formatForCursor())}
-              >
-                <div className="flex items-center gap-3 w-full">
-                  <div className="p-2 bg-gray-100 rounded">
-                    <FileText className="w-4 h-4" />
+              {/* Send to Cursor */}
+              <a href={cursorUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="w-full justify-start h-auto py-3">
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="p-2 bg-gray-900 rounded">
+                      <Terminal className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">🚀 Open in Cursor</p>
+                      <p className="text-xs text-gray-500">Implementation brief with full details</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-400 ml-auto" />
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium">Copy for Cursor/Claude Code</p>
-                    <p className="text-xs text-gray-500">Implementation brief with full details</p>
-                  </div>
-                  {copied === "cursor" && <Check className="w-4 h-4 text-green-500 ml-auto" />}
-                </div>
-              </Button>
+                </Button>
+              </a>
 
-              <Button
-                variant="outline"
-                className="justify-start h-auto py-3"
-                onClick={() => handleCopy("linear", formatForLinear())}
-              >
-                <div className="flex items-center gap-3 w-full">
-                  <div className="p-2 bg-gray-100 rounded">
-                    <ExternalLink className="w-4 h-4" />
+              {/* Add to Linear */}
+              <a href={linearUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="w-full justify-start h-auto py-3">
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="p-2 bg-blue-100 rounded">
+                      <CheckCircle className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">📋 Add to Linear</p>
+                      <p className="text-xs text-gray-500">Create issue with description</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-400 ml-auto" />
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium">Copy for Linear</p>
-                    <p className="text-xs text-gray-500">Issue description format</p>
-                  </div>
-                  {copied === "linear" && <Check className="w-4 h-4 text-green-500 ml-auto" />}
-                </div>
-              </Button>
+                </Button>
+              </a>
 
-              <Button
-                variant="outline"
-                className="justify-start h-auto py-3"
-                onClick={() => handleCopy("slack", formatForSlack())}
-              >
-                <div className="flex items-center gap-3 w-full">
-                  <div className="p-2 bg-gray-100 rounded">
-                    <Send className="w-4 h-4" />
+              {/* Send to Slack */}
+              <a href={slackUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="w-full justify-start h-auto py-3">
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="p-2 bg-purple-100 rounded">
+                      <Send className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">💬 Send to Slack</p>
+                      <p className="text-xs text-gray-500">Notify stakeholders</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-400 ml-auto" />
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium">Copy for Slack</p>
-                    <p className="text-xs text-gray-500">Short summary for stakeholders</p>
-                  </div>
-                  {copied === "slack" && <Check className="w-4 h-4 text-green-500 ml-auto" />}
-                </div>
-              </Button>
+                </Button>
+              </a>
+            </div>
+
+            <div className="border-t pt-4 mt-4">
+              <p className="text-sm text-gray-500 mb-3">Or copy to clipboard:</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleCopy("cursor", formatForCursor())}
+                >
+                  {copied === "cursor" ? (
+                    <><Check className="w-4 h-4 mr-1" /> Copied!</>
+                  ) : (
+                    <><Copy className="w-4 h-4 mr-1" /> Copy for Cursor</>
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleCopy("linear", formatForLinear())}
+                >
+                  {copied === "linear" ? (
+                    <><Check className="w-4 h-4 mr-1" /> Copied!</>
+                  ) : (
+                    <><Copy className="w-4 h-4 mr-1" /> Copy for Linear</>
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleCopy("slack", formatForSlack())}
+                >
+                  {copied === "slack" ? (
+                    <><Check className="w-4 h-4 mr-1" /> Copied!</>
+                  ) : (
+                    <><Copy className="w-4 h-4 mr-1" /> Copy for Slack</>
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -227,7 +268,7 @@ Next steps: Check PM Analyzer for full decision details.`;
         {decision.linkedFeedbackIds.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Linked Feedback</CardTitle>
+              <CardTitle className="text-lg">Linked Evidence</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-500">

@@ -33,6 +33,8 @@ export const feedbackWorker = new Worker(
             source: item.source,
             projectId: item.projectId,
             status: 'pending_analysis',
+            // Default model is set in POST /api/feedback/
+            analysisModel: item.analysisModel, 
           },
         });
 
@@ -46,16 +48,13 @@ export const feedbackWorker = new Worker(
         `;
         
         // Trigger individual analysis
-        // await analysisQueue.add('analyze', { feedbackId: feedback.id });
+        await prisma.feedbackJob.update({
+          where: { id: jobId },
+          data: {
+            processedItems: { increment: 1 },
+          },
+        });
       }
-
-      // 3. Update Job Stats
-      await prisma.feedbackJob.update({
-        where: { id: jobId },
-        data: {
-          processedItems: { increment: items.length },
-        },
-      });
 
       // 4. Check for Completion
       const jobRecord = await prisma.feedbackJob.findUnique({
@@ -112,11 +111,12 @@ export const analysisWorker = new Worker(
         data: {
           spec: spec as any,
           type: spec.type === 'BUG' ? 'bug' : 'feature',
-          status: 'analyzed', // or 'ready_to_build' if we want to auto-approve
+          status: 'analyzed',
         },
       });
 
-      console.log(`Analysis complete for ${feedbackId}`);
+      console.log(`Analysis complete for ${feedbackId}.`);
+      
     } catch (error) {
       console.error(`Analysis failed for ${feedbackId}:`, error);
       throw error;
