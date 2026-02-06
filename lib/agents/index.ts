@@ -3,8 +3,29 @@
 // Tool types for all agents
 export * from './tools';
 export * from './messages';
-export * from './orchestrator';
 export * from './base-agent';
+
+// A2A Protocol - Agent-to-Agent Communication
+export {
+  sendA2AMessage,
+  broadcastToAgents,
+  registerAgent,
+  getAgentHandler,
+  requestFromAgent,
+  workflowRequestLandingPage,
+  workflowGetMarketResearch,
+  A2AActions,
+  type A2AMessage,
+  type A2AResponse,
+  type Workflow,
+} from './a2a-protocol';
+
+// Orchestrator
+export {
+  orchestrator,
+  workflows,
+  type WorkflowStep,
+} from './orchestrator';
 
 // Agent implementations
 export { ResearchAgent } from './research-agent';

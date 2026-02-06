@@ -276,3 +276,21 @@ model Campaign {
   @@index([projectId])
   @@map("campaigns")
 }
+
+// A2A Workflow tracking
+model AgentWorkflow {
+  id            String   @id @default(cuid())
+  projectId     String
+  workflowType   String   // create_landing_page, full_product_launch
+  status        String   @default("running") // running, completed, failed
+  steps         String[]  // JSON serialized workflow steps
+  context       Json?     // Original request context
+  output        Json?     // Final output
+  error         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+  @@map("agent_workflows")
+}

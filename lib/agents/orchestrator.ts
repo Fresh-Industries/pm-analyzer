@@ -1,192 +1,162 @@
-// Agent Orchestrator - A2A Protocol Implementation
+// A2A Orchestrator - Coordinates Multi-Agent Workflows
 
-import { v4 as uuid } from 'crypto';
-import type { AgentMessage, AgentType, TaskContext } from './types';
+import {
+  sendA2AMessage,
+  broadcastToAgents,
+  A2AActions,
+  registerAgent,
+  type A2AMessage,
+  type A2AResponse,
+} from './a2a-protocol';
+import type { AgentType, MessageAction } from './types';
 import { prisma } from '@/lib/prisma';
 
+export interface WorkflowStep {
+  agent: AgentType;
+  action: MessageAction;
+  description: string;
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  steps: WorkflowStep[];
+}
+
+// Predefined workflows
+export const workflows: Record<string, Workflow> = {
+  CREATE_LANDING_PAGE: {
+    id: 'create_landing_page',
+    name: 'Create Landing Page',
+    steps: [
+      { agent: 'research', action: 'get_market_insights', description: 'Get market research' },
+      { agent: 'marketing', action: 'create_marketing_strategy', description: 'Create marketing strategy' },
+      { agent: 'build', action: 'generate_landing_page_code', description: 'Generate landing page code' },
+      { agent: 'marketing', action: 'generate_image_prompts', description: 'Generate image prompts' },
+    ],
+  },
+  
+  FULL_PRODUCT_LAUNCH: {
+    id: 'full_product_launch',
+    name: 'Full Product Launch',
+    steps: [
+      { agent: 'research', action: 'get_market_insights', description: 'Market research' },
+      { agent: 'spec', action: 'create_product_spec', description: 'Create product specification' },
+      { agent: 'build', action: 'build_product', description: 'Build product with OpenHands' },
+      { agent: 'marketing', action: 'create_campaign', description: 'Create marketing campaign' },
+      { agent: 'marketing', action: 'generate_assets', description: 'Generate marketing assets' },
+    ],
+  },
+};
+
 export class Orchestrator {
-  private messageLog: AgentMessage[] = [];
-  private checkpoints: string[] = [];
-  
-  // Generate unique message ID
-  private generateId(): string {
-    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-  
-  // Send message from one agent to another
-  async send(
-    from: AgentType,
-    to: AgentType,
-    action: AgentMessage['action'],
-    payload: Record<string, any>,
-    requiresApproval: boolean = false
-  ): Promise<AgentMessage> {
-    const message: AgentMessage = {
-      id: this.generateId(),
-      from,
-      to,
-      action,
-      payload,
-      timestamp: new Date().toISOString(),
-      requiresApproval,
-    };
+  private activeWorkflows: Map<string, A2AMessage[]> = new Map();
+
+  // Execute a predefined workflow
+  async executeWorkflow(
+    workflowId: string,
+    context: { projectId: string; userRequest: string }
+  ): Promise<{ workflowId: string; results: Map<AgentType, A2AResponse> }> {
+    const workflow = workflows[workflowId];
     
-    this.messageLog.push(message);
-    
-    // Log to database
-    await this.logMessage(message);
-    
-    return message;
-  }
-  
-  // Create a task for an agent
-  async createTask(
-    agentType: AgentType,
-    input: Record<string, any>,
-    checkpoint: string | null = null
-  ) {
-    const task = await prisma.agentTask.create({
-      data: {
-        agent: agentType,
-        status: 'pending',
-        input: input as any,
-        checkpoint,
-      },
-    });
-    
-    return task;
-  }
-  
-  // Complete a task
-  async completeTask(taskId: string, output: Record<string, any>) {
-    await prisma.agentTask.update({
-      where: { id: taskId },
-      data: {
-        status: 'completed',
-        output: output as any,
-      },
-    });
-  }
-  
-  // Request human checkpoint
-  async requestCheckpoint(
-    taskId: string,
-    checkpointId: string,
-    question: string
-  ) {
-    await prisma.agentTask.update({
-      where: { id: taskId },
-      data: {
-        status: 'waiting',
-        checkpoint: checkpointId,
-      },
-    });
-    
-    // Store checkpoint question
-    await prisma.checkpoint.create({
-      data: {
-        taskId,
-        question,
-        checkpointId,
-      },
-    });
-    
-    return { waiting: true, checkpointId };
-  }
-  
-  // Approve checkpoint (human input)
-  async approveCheckpoint(
-    checkpointId: string,
-    approved: boolean,
-    feedback?: string
-  ) {
-    const checkpoint = await prisma.checkpoint.findUnique({
-      where: { checkpointId },
-    });
-    
-    if (!checkpoint) {
-      return { error: 'Checkpoint not found' };
+    if (!workflow) {
+      throw new Error(`Workflow ${workflowId} not found`);
     }
-    
-    await prisma.checkpoint.update({
-      where: { checkpointId },
-      data: {
-        approved,
-        feedback,
-      },
-    });
-    
-    await prisma.agentTask.update({
-      where: { id: checkpoint.taskId },
-      data: {
-        status: 'pending',
-        humanApproved: approved,
-        humanFeedback: feedback,
-      },
-    });
-    
-    return { approved };
-  }
-  
-  // Get task status
-  async getTaskStatus(taskId: string) {
-    const task = await prisma.agentTask.findUnique({
-      where: { id: taskId },
-      include: {
-        checkpoints: true,
-      },
-    });
-    
-    return task;
-  }
-  
-  // Get all messages for a task
-  async getMessages(taskId: string): Promise<AgentMessage[]> {
-    const messages = await prisma.agentMessage.findMany({
-      where: { taskId },
-      orderBy: { createdAt: 'asc' },
-    });
-    
-    return messages.map(m => ({
-      id: m.id,
-      from: m.from as AgentType,
-      to: m.to as AgentType,
-      action: m.action as AgentMessage['action'],
-      payload: m.payload as Record<string, any>,
-      timestamp: m.createdAt.toISOString(),
-    }));
-  }
-  
-  // Log message to database
-  private async logMessage(message: AgentMessage) {
-    try {
-      await prisma.agentMessage.create({
-        data: {
-          id: message.id,
-          from: message.from,
-          to: message.to,
-          action: message.action,
-          payload: message.payload as any,
-          requiresApproval: message.requiresApproval || false,
+
+    const results = new Map<AgentType, A2AResponse>();
+
+    // Execute steps sequentially
+    for (const step of workflow.steps) {
+      const result = await sendA2AMessage(
+        'orchestrator' as AgentType,
+        step.agent,
+        step.action,
+        {
+          workflowId,
+          projectId: context.projectId,
+          previousResults: Object.fromEntries(results),
         },
-      });
-    } catch (error) {
-      // Silent fail - logging shouldn't break the flow
-      console.error('Failed to log message:', error);
+        { projectId: context.projectId, originalRequest: context.userRequest }
+      );
+      
+      results.set(step.agent, result);
     }
+
+    return {
+      workflowId,
+      results,
+    };
   }
-  
-  // Clear message log
-  clearLog() {
-    this.messageLog = [];
-    this.checkpoints = [];
+
+  // Execute parallel tasks
+  async executeParallel(
+    agents: AgentType[],
+    action: MessageAction,
+    payload: Record<string, any>,
+    context?: { projectId?: string }
+  ): Promise<Map<AgentType, A2AResponse>> {
+    return broadcastToAgents('orchestrator' as AgentType, agents, action, payload);
   }
-  
-  // Get message history
-  getHistory(): AgentMessage[] {
-    return [...this.messageLog];
+
+  // Start a new workflow
+  async startWorkflow(
+    userRequest: string,
+    projectId: string,
+    workflowType: keyof typeof workflows = 'CREATE_LANDING_PAGE'
+  ) {
+    const workflow = workflows[workflowType];
+
+    // Create workflow record
+    const workflowRecord = await prisma.agentWorkflow.create({
+      data: {
+        id: `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        projectId,
+        workflowType,
+        status: 'running',
+        steps: workflow.steps.map(s => JSON.stringify(s)),
+        context: { userRequest },
+      },
+    });
+
+    // Start execution
+    this.executeWorkflow(workflowType, { projectId, userRequest })
+      .then(async (result) => {
+        await prisma.agentWorkflow.update({
+          where: { id: workflowRecord.id },
+          data: {
+            status: 'completed',
+            output: JSON.stringify(result),
+          },
+        });
+      })
+      .catch(async (error) => {
+        await prisma.agentWorkflow.update({
+          where: { id: workflowRecord.id },
+          data: {
+            status: 'failed',
+            error: error.message,
+          },
+        });
+      });
+
+    return workflowRecord;
+  }
+
+  // Get workflow status
+  async getWorkflowStatus(workflowId: string) {
+    return prisma.agentWorkflow.findUnique({
+      where: { id: workflowId },
+    });
+  }
+
+  // Get all workflows for a project
+  async getProjectWorkflows(projectId: string) {
+    return prisma.agentWorkflow.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
 
-// Export singleton instance
+// Singleton instance
 export const orchestrator = new Orchestrator();
