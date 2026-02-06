@@ -71,22 +71,32 @@ export async function POST(
     const bugThemes = extractThemes(bugs);
     const featureThemes = extractThemes(features);
 
-    // Calculate impact based on tier + count
-    const calculateImpact = (items: typeof feedback) => {
+    // Calculate impact based on tier, type, AND volume
+    const calculateImpact = (items: typeof feedback, count: number) => {
       let score = 0;
       let enterpriseCount = 0;
+      
       items.forEach((item) => {
-        if (item.type === "bug") score += 30;
-        else if (item.type === "feature") score += 20;
+        // Base score by type
+        if (item.type === "bug") score += 20;
+        else if (item.type === "feature") score += 15;
+
+        // Customer tier bonus
         if (item.customerTier === "enterprise") {
-          score += 50;
+          score += 30;
           enterpriseCount++;
         } else if (item.customerTier === "pro") {
-          score += 30;
+          score += 15;
         } else {
-          score += 10;
+          score += 5;
         }
       });
+
+      // Volume bonus (more reports = higher priority)
+      if (count >= 5) score += 30;
+      else if (count >= 3) score += 15;
+      else if (count >= 2) score += 5;
+
       return { score: Math.min(score, 100), enterpriseCount };
     };
 
@@ -95,39 +105,39 @@ export async function POST(
 
     // Bug opportunities by theme
     Object.entries(bugThemes).forEach(([theme, examples]) => {
-      const impact = calculateImpact(bugs);
+      const filteredBugs = bugs.filter(b => examples.includes(b.text));
+      const count = filteredBugs.length;
+      const impact = calculateImpact(filteredBugs, count);
       opportunities.push({
         id: `bug-${theme.replace(/\s+/g, "-")}`,
         title: `Fix: ${theme.charAt(0).toUpperCase() + theme.slice(1)} issues`,
         category: "bug",
-        description: `${examples.length} reports about ${theme} problems`,
-        impact: impact.score > 80 ? "high" : impact.score > 50 ? "medium" : "low",
+        description: `${count} report${count > 1 ? 's' : ''} about ${theme}`,
+        impact: impact.score >= 75 ? "high" : impact.score >= 40 ? "medium" : "low",
         impactScore: impact.score,
-        feedbackCount: examples.length,
+        feedbackCount: count,
         enterpriseCount: impact.enterpriseCount,
         examples: examples.slice(0, 3),
-        feedbackIds: bugs.filter((b) => 
-          examples.includes(b.text)
-        ).map((b) => b.id),
+        feedbackIds: filteredBugs.map((b) => b.id),
       });
     });
 
     // Feature opportunities by theme
     Object.entries(featureThemes).forEach(([theme, examples]) => {
-      const impact = calculateImpact(features);
+      const filteredFeatures = features.filter(f => examples.includes(f.text));
+      const count = filteredFeatures.length;
+      const impact = calculateImpact(filteredFeatures, count);
       opportunities.push({
         id: `feat-${theme.replace(/\s+/g, "-")}`,
         title: `Add: ${theme.charAt(0).toUpperCase() + theme.slice(1)} feature`,
         category: "feature",
-        description: `${examples.length} requests for ${theme} functionality`,
-        impact: impact.score > 80 ? "high" : impact.score > 50 ? "medium" : "low",
+        description: `${count} request${count > 1 ? 's' : ''} for ${theme}`,
+        impact: impact.score >= 75 ? "high" : impact.score >= 40 ? "medium" : "low",
         impactScore: impact.score,
-        feedbackCount: examples.length,
+        feedbackCount: count,
         enterpriseCount: impact.enterpriseCount,
         examples: examples.slice(0, 3),
-        feedbackIds: features.filter((f) => 
-          examples.includes(f.text)
-        ).map((f) => f.id),
+        feedbackIds: filteredFeatures.map((f) => f.id),
       });
     });
 
