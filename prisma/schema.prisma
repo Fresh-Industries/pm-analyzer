@@ -177,3 +177,102 @@ model Decision {
 
   @@map("decisions")
 }
+
+// ============================================
+// AGENT MODELS - Product Builder Agents
+// ============================================
+
+model AgentTask {
+  id            String   @id @default(cuid())
+  agent         String   // research, spec, build, marketing, feedback, iterate
+  status        String   @default("pending") // pending, running, waiting, completed, failed
+  input         Json
+  output        Json?
+  checkpoint    String?  // checkpoint identifier
+  humanApproved Boolean  @default(false)
+  humanFeedback String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([agent, status])
+  @@index([status])
+  @@map("agent_tasks")
+}
+
+model AgentMessage {
+  id              String   @id @default(cuid())
+  taskId          String
+  task            AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  from            String   // agent type
+  to              String   // agent type
+  action          String   // task_request, task_complete, etc.
+  payload         Json
+  requiresApproval Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([taskId])
+  @@map("agent_messages")
+}
+
+model Checkpoint {
+  id          String   @id @default(cuid())
+  taskId      String
+  task        AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  checkpointId String   @unique
+  question    String   @db.Text
+  approved    Boolean?
+  feedback    String?
+  createdAt   DateTime @default(now())
+
+  @@index([taskId])
+  @@map("checkpoints")
+}
+
+model ResearchResult {
+  id          String   @id @default(cuid())
+  projectId   String
+  summary     String   @db.Text
+  details     Json
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@map("research_results")
+}
+
+model ProductSpec {
+  id          String   @id @default(cuid())
+  projectId   String
+  content     Json
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@map("product_specs")
+}
+
+model Build {
+  id            String   @id @default(cuid())
+  projectId     String
+  githubUrl     String?
+  deployedUrl    String?
+  filesCreated   Int      @default(0)
+  technologies   String[]
+  status        String   @default("pending") // pending, building, deployed, failed
+  createdAt     DateTime @default(now())
+
+  @@index([projectId])
+  @@map("builds")
+}
+
+model Campaign {
+  id            String   @id @default(cuid())
+  projectId     String
+  productUrl    String?
+  landingPage   String?
+  launchCopy     Json?
+  postedChannels String[]
+  createdAt     DateTime @default(now())
+
+  @@index([projectId])
+  @@map("campaigns")
+}
