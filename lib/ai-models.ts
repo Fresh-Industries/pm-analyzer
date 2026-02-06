@@ -1,13 +1,14 @@
 export const ANALYSIS_MODELS = [
+  { id: "google:gemini-3-pro-preview", label: "Google Gemini 3 Pro (Preview)" },
+  { id: "google:gemini-3-flash-preview", label: "Google Gemini 3 Flash (Preview)" },
   { id: "openai:gpt-4o", label: "OpenAI GPT-4o" },
   { id: "openai:gpt-4o-mini", label: "OpenAI GPT-4o mini" },
-  { id: "google:gemini-2.5-pro", label: "Google Gemini 2.5 Pro" },
-  { id: "google:gemini-2.5-flash", label: "Google Gemini 2.5 Flash" },
 ] as const;
 
 export type AnalysisModelId = (typeof ANALYSIS_MODELS)[number]["id"];
 
-export const DEFAULT_ANALYSIS_MODEL_ID: AnalysisModelId = "openai:gpt-4o";
+export const DEFAULT_ANALYSIS_MODEL_ID: AnalysisModelId =
+  "google:gemini-3-pro-preview";
 
 export function isAnalysisModelId(
   id: string | null | undefined

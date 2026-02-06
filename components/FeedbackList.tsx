@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search,
   ExternalLink,
@@ -10,6 +10,7 @@ import {
   Github,
   Bug,
   Terminal,
+  Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,12 +23,18 @@ interface FeedbackListProps {
 }
 
 export function FeedbackList({ feedbacks }: FeedbackListProps) {
+  const [items, setItems] = useState(feedbacks);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "sentry" | "pr">("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedSpec, setExpandedSpec] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const filtered = feedbacks.filter((f) => {
+  useEffect(() => {
+    setItems(feedbacks);
+  }, [feedbacks]);
+
+  const filtered = items.filter((f) => {
     const matchesSearch =
       f.text.toLowerCase().includes(search.toLowerCase()) ||
       f.source?.toLowerCase().includes(search.toLowerCase());
@@ -39,6 +46,37 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
 
     return matchesSearch && matchesFilter;
   });
+
+  const handleDelete = async (item: Feedback) => {
+    const confirmed = window.confirm(
+      "Delete this feedback? This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    setDeletingId(item.id);
+    try {
+      const response = await fetch(`/api/feedback/${item.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        let message = "Failed to delete feedback";
+        try {
+          const data = await response.json();
+          message = data?.error || data?.message || message;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(message);
+      }
+      setItems((prev) => prev.filter((f) => f.id !== item.id));
+      if (expandedSpec === item.id) setExpandedSpec(null);
+      if (copiedId === item.id) setCopiedId(null);
+    } catch (error: any) {
+      alert(error.message || "Failed to delete feedback");
+    } finally {
+      setDeletingId((current) => (current === item.id ? null : current));
+    }
+  };
 
   const handleCopySpec = async (item: Feedback) => {
     try {
@@ -199,6 +237,16 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
                         </a>
                       </Button>
                     )}
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDelete(item)}
+                      disabled={deletingId === item.id}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      {deletingId === item.id ? "Deleting..." : "Delete"}
+                    </Button>
                   </div>
                 </div>
 
