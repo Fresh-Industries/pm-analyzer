@@ -129,52 +129,168 @@ export interface BuildOutput {
   logs?: string;
 }
 
-// Marketing Agent specific types
+// Marketing Agent V2 Types
 export interface MarketingInput {
   build: BuildOutput;
   projectId?: string;
+  tone?: 'professional' | 'casual' | 'urgent';
+  audience?: string;
 }
 
 export interface MarketingOutput {
+  // Positioning
   positioning: {
     tagline: string;
     oneLiner: string;
     targetAudience: string;
     mainBenefit: string;
     differentiation: string;
+    customerProfile: {
+      name: string;
+      role: string;
+      painPoints: string[];
+      goals: string[];
+    };
   };
+  
+  // Landing Page with A/B Variants
   landingPage: {
-    heroHeadline: string;
-    heroSubheadline: string;
-    keyBenefits: string[];
+    headlines: Array<{
+      text: string;
+      rationale: string;
+      expectedImpact: 'high' | 'medium' | 'low';
+    }>;
+    subheadlines: Array<{
+      text: string;
+      rationale: string;
+    }>;
+    keyBenefits: Array<{
+      benefit: string;
+      supportingEvidence: string;
+    }>;
     features: Array<{
       title: string;
       description: string;
       icon: string;
     }>;
-    cta: {
-      primary: string;
-      secondary: string;
+    ctas: {
+      primary: Array<{
+        text: string;
+        rationale: string;
+        urgency: string;
+      }>;
+      secondary: Array<{
+        text: string;
+        rationale: string;
+      }>;
     };
-    socialProof: string[];
+    socialProof: Array<{
+      type: 'testimonial' | 'stats' | 'logo' | 'review';
+      content: string;
+      attribution?: string;
+    }>;
   };
+  
+  // Social Media with Platform Optimization
   socialPosts: {
-    twitter: string;
-    linkedin: string;
-    hackerNews: string;
+    twitter: {
+      main: string;
+      variants: Array<{
+        text: string;
+        type: 'question' | 'stat' | 'story' | 'tip' | 'announcement';
+      }>;
+      hashtags: string[];
+      bestTime: string;
+      engagementPrediction: {
+        expectedImpressions: string;
+        expectedEngagement: string;
+        expectedClicks: string;
+        confidence: 'high' | 'medium' | 'low';
+      };
+    };
+    linkedin: {
+      main: string;
+      variants: Array<{
+        text: string;
+        hookType: 'question' | 'story' | 'data' | 'problem' | 'solution';
+      }>;
+      bestTime: string;
+      engagementPrediction: {
+        expectedImpressions: string;
+        expectedEngagement: string;
+        expectedClicks: string;
+        confidence: 'high' | 'medium' | 'low';
+      };
+    };
+    hackerNews: {
+      title: string;
+      description: string;
+      engagementPrediction: {
+        expectedUpvotes: string;
+        expectedComments: string;
+        confidence: 'high' | 'medium' | 'low';
+      };
+      tips: string[];
+    };
     productHunt: {
       title: string;
       subtitle: string;
       description: string;
       tagline: string;
+      engagementPrediction: {
+        expectedUpvotes: string;
+        expectedComments: string;
+        confidence: 'high' | 'medium' | 'low';
+      };
     };
   };
+  
+  // Email Sequence with Predictions
   emailSequence: Array<{
+    day: number;
     subject: string;
     previewText: string;
     body: string;
-    timing: string;
+    engagementPrediction: {
+      expectedOpenRate: string;
+      expectedClickRate: string;
+      expectedConversionRate: string;
+      confidence: 'high' | 'medium' | 'low';
+    };
+    notes?: string;
   }>;
+  
+  // A/B Testing Strategy
+  abTestingStrategy: {
+    recommendedTests: Array<{
+      element: string;
+      variants: Array<{
+        name: string;
+        description: string;
+        hypothesis: string;
+        priority: number;
+      }>;
+      expectedImpact: string;
+      sampleSize: string;
+      duration: string;
+    }>;
+    controlVersion: string;
+  };
+  
+  // Launch Timeline
+  launchTimeline: Array<{
+    day: number;
+    phase: 'pre_launch' | 'launch_day' | 'post_launch';
+    action: string;
+    channel: string;
+    description: string;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    deliverables: string[];
+  }>;
+  
+  // Metadata
+  tone: string;
+  audience: string;
 }
 
 // Feedback Agent specific types
