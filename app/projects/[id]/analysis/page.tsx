@@ -36,21 +36,42 @@ interface Analysis {
   opportunities: Opportunity[];
 }
 
-const isAnalysis = (data: unknown): data is Analysis => {
-  if (!data || typeof data !== "object") return false;
-  const record = data as Record<string, unknown>;
-  const themes = record.themes as Record<string, unknown> | undefined;
+const isSummary = (value: unknown): value is Analysis["summary"] => {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
   return (
-    typeof record.projectId === "string" &&
-    typeof record.generatedAt === "string" &&
-    typeof record.feedbackCount === "number" &&
-    themes !== undefined &&
-    typeof themes.bugs === "number" &&
-    typeof themes.features === "number" &&
-    typeof themes.other === "number" &&
-    Array.isArray(record.opportunities) &&
-    Array.isArray(record.topKeywords)
+    typeof record.bugs === "number" &&
+    typeof record.features === "number" &&
+    typeof record.other === "number"
   );
+};
+
+const normalizeAnalysis = (data: unknown): Analysis | null => {
+  if (!data || typeof data !== "object") return null;
+  const record = data as Record<string, unknown>;
+  const summaryCandidate = record.summary ?? record.themes;
+
+  if (
+    typeof record.projectId !== "string" ||
+    typeof record.generatedAt !== "string" ||
+    typeof record.feedbackCount !== "number" ||
+    !Array.isArray(record.opportunities) ||
+    !isSummary(summaryCandidate)
+  ) {
+    return null;
+  }
+
+  return {
+    projectId: record.projectId,
+    generatedAt: record.generatedAt,
+    feedbackCount: record.feedbackCount,
+    summary: {
+      bugs: summaryCandidate.bugs,
+      features: summaryCandidate.features,
+      other: summaryCandidate.other,
+    },
+    opportunities: record.opportunities as Opportunity[],
+  };
 };
 
 export default function AnalysisPage({
@@ -73,7 +94,7 @@ export default function AnalysisPage({
       const res = await fetch(`/api/projects/${projectId}/analyze`);
       if (res.ok) {
         const data = await res.json();
-        setAnalysis(isAnalysis(data) ? data : null);
+        setAnalysis(normalizeAnalysis(data));
       }
     } catch (error) {
       console.error("Failed to fetch analysis:", error);
@@ -90,7 +111,7 @@ export default function AnalysisPage({
       });
       if (res.ok) {
         const data = await res.json();
-        setAnalysis(isAnalysis(data) ? data : null);
+        setAnalysis(normalizeAnalysis(data));
       }
     } catch (error) {
       console.error("Analysis failed:", error);
