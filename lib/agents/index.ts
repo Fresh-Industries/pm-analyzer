@@ -10,8 +10,10 @@ export * from './base-agent';
 export { ResearchAgent } from './research-agent';
 export { SpecAgent } from './spec-agent';
 export { BuildAgent } from './build-agent';
+export { MarketingAgent } from './marketing-agent';
 
 // Types
 export type { ResearchInput, ResearchOutput } from './types';
 export type { SpecInput, SpecOutput } from './types';
 export type { BuildInput, BuildOutput } from './types';
+export type { MarketingInput, MarketingOutput } from './types';

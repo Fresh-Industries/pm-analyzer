@@ -87,7 +87,12 @@ export interface SpecOutput {
   title: string;
   problem: string;
   solution: string;
-  features: string[];
+  features: Array<{
+    name: string;
+    description: string;
+    priority: 'must' | 'should' | 'could' | 'wont';
+    estimatedHours?: number;
+  }>;
   techStack: {
     frontend: string;
     backend: string;
@@ -95,10 +100,18 @@ export interface SpecOutput {
     auth: string;
     hosting: string;
     payments?: string;
+    ai?: string;
   };
   architecture: string;
-  apiEndpoints: { method: string; path: string; description: string }[];
-  fileStructure: { path: string; description: string }[];
+  apiEndpoints: Array<{
+    method: string;
+    path: string;
+    description: string;
+  }>;
+  fileStructure: Array<{
+    path: string;
+    description: string;
+  }>;
 }
 
 // Build Agent specific types
@@ -110,28 +123,58 @@ export interface BuildInput {
 export interface BuildOutput {
   githubUrl: string;
   deployedUrl?: string;
+  status: string;
   filesCreated: number;
   technologies: string[];
-  nextSteps: string[];
+  logs?: string;
 }
 
 // Marketing Agent specific types
 export interface MarketingInput {
-  product: SpecOutput;
   build: BuildOutput;
+  projectId?: string;
 }
 
 export interface MarketingOutput {
-  landingPageHtml: string;
-  tagline: string;
-  heroDescription: string;
-  featuresList: string[];
-  pricing: string;
-  launchCopy: {
-    productHunt: string;
-    twitter: string;
-    linkedin?: string;
+  positioning: {
+    tagline: string;
+    oneLiner: string;
+    targetAudience: string;
+    mainBenefit: string;
+    differentiation: string;
   };
+  landingPage: {
+    heroHeadline: string;
+    heroSubheadline: string;
+    keyBenefits: string[];
+    features: Array<{
+      title: string;
+      description: string;
+      icon: string;
+    }>;
+    cta: {
+      primary: string;
+      secondary: string;
+    };
+    socialProof: string[];
+  };
+  socialPosts: {
+    twitter: string;
+    linkedin: string;
+    hackerNews: string;
+    productHunt: {
+      title: string;
+      subtitle: string;
+      description: string;
+      tagline: string;
+    };
+  };
+  emailSequence: Array<{
+    subject: string;
+    previewText: string;
+    body: string;
+    timing: string;
+  }>;
 }
 
 // Feedback Agent specific types
