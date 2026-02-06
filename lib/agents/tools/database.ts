@@ -8,8 +8,7 @@ import type { ToolDefinition } from './types';
 // Save research results
 export const saveResearchTool: ToolDefinition = {
   name: 'save_research',
-  description: 'Save research findings to the database for a project.',
-  
+  description: 'Save research findings to the database for a project.',  
   parameters: z.object({
     projectId: z.string().describe('The project ID'),
     research: z.record(z.any()).describe('Research data to save'),
@@ -144,6 +143,38 @@ export const saveBuildTool: ToolDefinition = {
       });
       
       return { success: true, data: { buildId: build.id } };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+};
+
+// Save feedback analysis
+export const saveFeedbackAnalysisTool: ToolDefinition = {
+  name: 'save_feedback_analysis',
+  description: 'Save feedback analysis results',
+  
+  parameters: z.object({
+    projectId: z.string().describe('The project ID'),
+    analysis: z.record(z.any()).describe('Feedback analysis data'),
+  }),
+  
+  execute: async ({ projectId, analysis }) => {
+    try {
+      const result = await prisma.feedbackAnalysis.create({
+        data: {
+          projectId,
+          sentiment: analysis.sentiment,
+          score: analysis.score,
+          highlights: analysis.highlights as any,
+          concerns: analysis.concerns as any,
+          suggestions: analysis.suggestions as any,
+          themes: analysis.themes as any,
+          rawFeedback: analysis.rawFeedback as any,
+        },
+      });
+      
+      return { success: true, data: { id: result.id } };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

@@ -294,3 +294,20 @@ model AgentWorkflow {
   @@index([status])
   @@map("agent_workflows")
 }
+
+// Feedback Analysis
+model FeedbackAnalysis {
+  id          String   @id @default(cuid())
+  projectId   String
+  sentiment   String   // positive, neutral, negative
+  score      Float    // 1-10
+  highlights  String[]
+  concerns    String[]
+  suggestions Json?
+  themes     Json?
+  rawFeedback Json?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@map("feedback_analyses")
+}

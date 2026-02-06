@@ -46,7 +46,7 @@ export interface ToolResult {
 export interface ToolDefinition {
   name: string;
   description: string;
-  parameters: z.ZodObject<any>;
+  parameters: any;
   execute: (args: Record<string, any>) => Promise<ToolResult>;
 }
 
@@ -239,9 +239,21 @@ export interface MarketingOutput {
 }
 
 // Feedback Agent specific types
+export interface FeedbackItem {
+  text: string;
+  source?: string;
+  createdAt?: Date;
+}
+
+export interface ProductInfo {
+  id?: string;
+  name: string;
+  description?: string;
+}
+
 export interface FeedbackInput {
-  productUrl: string;
-  launchChannels: string[];
+  feedback: FeedbackItem[];
+  productInfo?: ProductInfo;
 }
 
 export interface FeedbackOutput {
@@ -249,8 +261,22 @@ export interface FeedbackOutput {
   score: number; // 1-10
   highlights: string[];
   concerns: string[];
-  suggestions: string[];
-  rawFeedback: { channel: string; text: string; sentiment: string }[];
+  suggestions: Array<{
+    item: string;
+    priority: 'high' | 'medium' | 'low';
+    effort: 'high' | 'medium' | 'low';
+    reasoning: string;
+  }>;
+  themes: Array<{
+    name: string;
+    count: number;
+    sentiment: 'positive' | 'neutral' | 'negative';
+  }>;
+  rawFeedback: Array<{
+    text: string;
+    sentiment: 'positive' | 'neutral' | 'negative';
+    source?: string;
+  }>;
 }
 
 // Iterate Agent specific types
@@ -260,12 +286,12 @@ export interface IterateInput {
 }
 
 export interface IterateOutput {
-  prioritizedImprovements: {
+  prioritizedImprovements: Array<{
     item: string;
     impact: 'high' | 'medium' | 'low';
     effort: 'high' | 'medium' | 'low';
     reasoning: string;
-  }[];
+  }>;
   nextSprint: {
     items: string[];
     goal: string;
