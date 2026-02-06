@@ -129,7 +129,7 @@ export interface BuildOutput {
   logs?: string;
 }
 
-// Marketing Agent V2 Types
+// Marketing Agent V3 Types
 export interface MarketingInput {
   build: BuildOutput;
   projectId?: string;
@@ -137,156 +137,101 @@ export interface MarketingInput {
   audience?: string;
 }
 
+// Generated site code
+export interface MarketingSiteCode {
+  files: Array<{
+    path: string;
+    content: string;
+  }>;
+  siteName: string;
+  template: string;
+}
+
+export interface ImagePrompt {
+  prompt: string;
+  aspectRatio: '1:1' | '16:9' | '9:16' | '4:3';
+  resolution: '1k' | '2k' | '4k';
+}
+
+export interface FeatureImagePrompt {
+  icon: string;
+  prompt: string;
+  aspectRatio: '1:1' | '4:3';
+  resolution: '1k' | '2k';
+}
+
 export interface MarketingOutput {
-  // Positioning
+  // Copy (from V2)
   positioning: {
     tagline: string;
     oneLiner: string;
     targetAudience: string;
     mainBenefit: string;
     differentiation: string;
-    customerProfile: {
-      name: string;
-      role: string;
-      painPoints: string[];
-      goals: string[];
-    };
   };
   
-  // Landing Page with A/B Variants
-  landingPage: {
-    headlines: Array<{
-      text: string;
-      rationale: string;
-      expectedImpact: 'high' | 'medium' | 'low';
-    }>;
-    subheadlines: Array<{
-      text: string;
-      rationale: string;
-    }>;
-    keyBenefits: Array<{
-      benefit: string;
-      supportingEvidence: string;
-    }>;
-    features: Array<{
-      title: string;
-      description: string;
-      icon: string;
-    }>;
-    ctas: {
-      primary: Array<{
-        text: string;
-        rationale: string;
-        urgency: string;
-      }>;
-      secondary: Array<{
-        text: string;
-        rationale: string;
-      }>;
-    };
-    socialProof: Array<{
-      type: 'testimonial' | 'stats' | 'logo' | 'review';
-      content: string;
-      attribution?: string;
-    }>;
+  // Hero
+  hero: {
+    headline: string;
+    subheadline: string;
+    ctaPrimary: string;
+    ctaSecondary: string;
   };
   
-  // Social Media with Platform Optimization
-  socialPosts: {
-    twitter: {
-      main: string;
-      variants: Array<{
-        text: string;
-        type: 'question' | 'stat' | 'story' | 'tip' | 'announcement';
-      }>;
-      hashtags: string[];
-      bestTime: string;
-      engagementPrediction: {
-        expectedImpressions: string;
-        expectedEngagement: string;
-        expectedClicks: string;
-        confidence: 'high' | 'medium' | 'low';
-      };
-    };
-    linkedin: {
-      main: string;
-      variants: Array<{
-        text: string;
-        hookType: 'question' | 'story' | 'data' | 'problem' | 'solution';
-      }>;
-      bestTime: string;
-      engagementPrediction: {
-        expectedImpressions: string;
-        expectedEngagement: string;
-        expectedClicks: string;
-        confidence: 'high' | 'medium' | 'low';
-      };
-    };
-    hackerNews: {
-      title: string;
-      description: string;
-      engagementPrediction: {
-        expectedUpvotes: string;
-        expectedComments: string;
-        confidence: 'high' | 'medium' | 'low';
-      };
-      tips: string[];
-    };
-    productHunt: {
-      title: string;
-      subtitle: string;
-      description: string;
-      tagline: string;
-      engagementPrediction: {
-        expectedUpvotes: string;
-        expectedComments: string;
-        confidence: 'high' | 'medium' | 'low';
-      };
-    };
-  };
-  
-  // Email Sequence with Predictions
-  emailSequence: Array<{
-    day: number;
-    subject: string;
-    previewText: string;
-    body: string;
-    engagementPrediction: {
-      expectedOpenRate: string;
-      expectedClickRate: string;
-      expectedConversionRate: string;
-      confidence: 'high' | 'medium' | 'low';
-    };
-    notes?: string;
-  }>;
-  
-  // A/B Testing Strategy
-  abTestingStrategy: {
-    recommendedTests: Array<{
-      element: string;
-      variants: Array<{
-        name: string;
-        description: string;
-        hypothesis: string;
-        priority: number;
-      }>;
-      expectedImpact: string;
-      sampleSize: string;
-      duration: string;
-    }>;
-    controlVersion: string;
-  };
-  
-  // Launch Timeline
-  launchTimeline: Array<{
-    day: number;
-    phase: 'pre_launch' | 'launch_day' | 'post_launch';
-    action: string;
-    channel: string;
+  // Features
+  features: Array<{
+    title: string;
     description: string;
-    priority: 'critical' | 'high' | 'medium' | 'low';
-    deliverables: string[];
+    icon: string;
   }>;
+  
+  // Pricing
+  pricing: Array<{
+    name: string;
+    price: string;
+    period?: string;
+    description: string;
+    features: string[];
+    cta: string;
+    popular?: boolean;
+  }>;
+  
+  // Testimonials
+  testimonials: Array<{
+    quote: string;
+    author: string;
+    role: string;
+    company?: string;
+  }>;
+  
+  // FAQ
+  faq: Array<{
+    question: string;
+    answer: string;
+  }>;
+  
+  // CTA
+  cta: {
+    headline: string;
+    subheadline: string;
+    cta: string;
+  };
+  
+  // Image Prompts for Nano Banana
+  imagePrompts: {
+    hero: ImagePrompt;
+    features: FeatureImagePrompt[];
+  };
+  
+  // Generated Site Code (V3)
+  siteCode?: MarketingSiteCode;
+  
+  // Site Configuration
+  siteConfig: {
+    siteName: string;
+    primaryColor: string;
+    secondaryColor: string;
+  };
   
   // Metadata
   tone: string;
