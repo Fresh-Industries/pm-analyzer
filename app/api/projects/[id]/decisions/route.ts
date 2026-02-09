@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         scope: scope || "",
         risks: risks || "",
         nonGoals: nonGoals || "",
-        confidence: confidence || "medium",
+        confidenceScore: confidence || 0.5,
         status: "draft",
         linkedFeedbackIds: linkedFeedbackIds || [],
       },

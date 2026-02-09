@@ -238,11 +238,19 @@ export default async function AnalysisPage({
                         <h4 className="font-semibold text-lg">{opp.title}</h4>
                         <p className="text-gray-600 mt-1">{opp.description}</p>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-purple-600">
-                          {Math.round(opp.impactScore * 100)}%
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-purple-600">
+                            {Math.round(opp.impactScore * 100)}%
+                          </div>
+                          <p className="text-sm text-gray-500">impact score</p>
                         </div>
-                        <p className="text-sm text-gray-500">impact score</p>
+                        <Button size="sm" asChild>
+                          <Link href={`/projects/${projectId}/decisions/new`}>
+                            <Target className="w-4 h-4 mr-1" />
+                            Create Decision
+                          </Link>
+                        </Button>
                       </div>
                     </div>
                   </div>
