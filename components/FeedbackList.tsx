@@ -11,6 +11,7 @@ import {
   Bug,
   Terminal,
   Trash2,
+  Quote,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,6 +28,7 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "sentry" | "pr">("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedQuoteId, setCopiedQuoteId] = useState<string | null>(null);
   const [expandedSpec, setExpandedSpec] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -71,6 +73,7 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
       setItems((prev) => prev.filter((f) => f.id !== item.id));
       if (expandedSpec === item.id) setExpandedSpec(null);
       if (copiedId === item.id) setCopiedId(null);
+      if (copiedQuoteId === item.id) setCopiedQuoteId(null);
     } catch (error: any) {
       alert(error.message || "Failed to delete feedback");
     } finally {
@@ -91,6 +94,21 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
       setTimeout(() => setCopiedId(null), 2000);
     } catch (error: any) {
       alert(error.message || "Unable to copy implementation text");
+    }
+  };
+
+  const handleCopyAsQuote = async (item: Feedback) => {
+    try {
+      // Format the feedback as a customer quote
+      const customerTier = item.customerTier || "Unknown tier";
+      const source = item.source || "Unknown source";
+      const quote = `> "${item.text}"\n>\n> — ${customerTier} customer via ${source}`;
+
+      await navigator.clipboard.writeText(quote);
+      setCopiedQuoteId(item.id);
+      setTimeout(() => setCopiedQuoteId(null), 2000);
+    } catch (error: any) {
+      alert(error.message || "Unable to copy quote");
     }
   };
 
@@ -225,6 +243,24 @@ export function FeedbackList({ feedbacks }: FeedbackListProps) {
                         )}
                       </Button>
                     )}
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopyAsQuote(item)}
+                      disabled={copiedQuoteId === item.id}
+                      title="Copy as formatted customer quote"
+                    >
+                      {copiedQuoteId === item.id ? (
+                        <>
+                          <Check className="w-4 h-4 mr-1" /> Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Quote className="w-4 h-4 mr-1" /> Copy Quote
+                        </>
+                      )}
+                    </Button>
 
                     {item.status === "shipped" && item.githubPrUrl && (
                       <Button size="sm" variant="outline" asChild>
